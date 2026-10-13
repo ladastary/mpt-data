@@ -1,0 +1,269 @@
+{
+ "run": "2026-10-13T08:22:20Z",
+ "ok": true,
+ "published": true,
+ "checks": [
+  {
+   "check": "FX: CNB EUR/USD vs Fed H.10",
+   "ok": true,
+   "hard": true,
+   "detail": "max month-end gap 1.64% over 321 months"
+  },
+  {
+   "check": "EQ_US: index code sanity (2008 USD return)",
+   "ok": true,
+   "hard": true,
+   "detail": "MSCI 984000 2008 = -37.6%, expected about -37.6%"
+  },
+  {
+   "check": "EQ_US: MSCI EUR vs USD converted at CNB FX",
+   "ok": true,
+   "hard": true,
+   "detail": "mean abs monthly gap 0.37pp over 309 months"
+  },
+  {
+   "check": "EQ_EU: index code sanity (2008 USD return)",
+   "ok": true,
+   "hard": true,
+   "detail": "MSCI 990500 2008 = -46.4%, expected about -46.4%"
+  },
+  {
+   "check": "EQ_EU: MSCI EUR vs USD converted at CNB FX",
+   "ok": true,
+   "hard": true,
+   "detail": "mean abs monthly gap 0.37pp over 309 months"
+  },
+  {
+   "check": "EQ_EM: index code sanity (2008 USD return)",
+   "ok": true,
+   "hard": true,
+   "detail": "MSCI 891800 2008 = -53.3%, expected about -53.3%"
+  },
+  {
+   "check": "EQ_EM: MSCI EUR vs USD converted at CNB FX",
+   "ok": true,
+   "hard": true,
+   "detail": "mean abs monthly gap 0.37pp over 309 months"
+  },
+  {
+   "check": "EQ_WLD: index code sanity (2008 USD return)",
+   "ok": true,
+   "hard": true,
+   "detail": "MSCI 990100 2008 = -40.7%, expected about -40.7%"
+  },
+  {
+   "check": "EQ_WLD: MSCI EUR vs USD converted at CNB FX",
+   "ok": true,
+   "hard": true,
+   "detail": "mean abs monthly gap 0.37pp over 309 months"
+  },
+  {
+   "check": "EQ_DE: index code sanity (2008 USD return)",
+   "ok": true,
+   "hard": true,
+   "detail": "MSCI 928000 2008 = -45.9%, expected about -45.9%"
+  },
+  {
+   "check": "EQ_DE: MSCI EUR vs USD converted at CNB FX",
+   "ok": true,
+   "hard": true,
+   "detail": "mean abs monthly gap 0.36pp over 309 months"
+  },
+  {
+   "check": "GOLD: month-end price available",
+   "ok": false,
+   "hard": false,
+   "detail": "LBMA feed unavailable - fallback uses monthly averages (vol understated)"
+  },
+  {
+   "check": "BD_US10: yields in plausible range",
+   "ok": true,
+   "hard": true,
+   "detail": "320 months, out-of-range: []"
+  },
+  {
+   "check": "BD_DE10: yields in plausible range",
+   "ok": true,
+   "hard": true,
+   "detail": "320 months, out-of-range: []"
+  },
+  {
+   "check": "BD_CZ10: yields in plausible range",
+   "ok": true,
+   "hard": true,
+   "detail": "317 months, out-of-range: []"
+  },
+  {
+   "check": "CASH: call-money vs ESTR overlap",
+   "ok": true,
+   "hard": true,
+   "detail": "mean abs gap 0.012pp over 76 months"
+  },
+  {
+   "check": "EQ_US: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "EQ_US: no implausible monthly moves (>35%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "EQ_EU: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "EQ_EU: no implausible monthly moves (>35%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "EQ_EM: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "EQ_EM: no implausible monthly moves (>35%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "EQ_WLD: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "EQ_WLD: no implausible monthly moves (>35%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "EQ_DE: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "EQ_DE: no implausible monthly moves (>35%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "GOLD: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "GOLD: no implausible monthly moves (>25%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "BD_US10: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "BD_US10: no implausible monthly moves (>18%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "BD_DE10: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "BD_DE10: no implausible monthly moves (>18%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "BD_CZ10: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "BD_CZ10: no implausible monthly moves (>18%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "CASH_EUR: full 300-month coverage",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-09..2026-08, missing 0 []"
+  },
+  {
+   "check": "CASH_EUR: no implausible monthly moves (>1%)",
+   "ok": true,
+   "hard": true,
+   "detail": "flagged []"
+  },
+  {
+   "check": "window is current",
+   "ok": true,
+   "hard": false,
+   "detail": "window ends 2026-08, 2 months before today"
+  }
+ ],
+ "log": [
+  "[PASS] FX: CNB EUR/USD vs Fed H.10: max month-end gap 1.64% over 321 months",
+  "[PASS] EQ_US: index code sanity (2008 USD return): MSCI 984000 2008 = -37.6%, expected about -37.6%",
+  "[PASS] EQ_US: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.37pp over 309 months",
+  "[PASS] EQ_EU: index code sanity (2008 USD return): MSCI 990500 2008 = -46.4%, expected about -46.4%",
+  "[PASS] EQ_EU: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.37pp over 309 months",
+  "[PASS] EQ_EM: index code sanity (2008 USD return): MSCI 891800 2008 = -53.3%, expected about -53.3%",
+  "[PASS] EQ_EM: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.37pp over 309 months",
+  "[PASS] EQ_WLD: index code sanity (2008 USD return): MSCI 990100 2008 = -40.7%, expected about -40.7%",
+  "[PASS] EQ_WLD: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.37pp over 309 months",
+  "[PASS] EQ_DE: index code sanity (2008 USD return): MSCI 928000 2008 = -45.9%, expected about -45.9%",
+  "[PASS] EQ_DE: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.36pp over 309 months",
+  "LBMA gold unavailable (download failed: https://prices.lbma.org.uk/json/gold_pm.json (HTTP Error 403: Forbidden)); using World Bank monthly average",
+  "[WARN] GOLD: month-end price available: LBMA feed unavailable - fallback uses monthly averages (vol understated)",
+  "[PASS] BD_US10: yields in plausible range: 320 months, out-of-range: []",
+  "[PASS] BD_DE10: yields in plausible range: 320 months, out-of-range: []",
+  "[PASS] BD_CZ10: yields in plausible range: 317 months, out-of-range: []",
+  "[PASS] CASH: call-money vs ESTR overlap: mean abs gap 0.012pp over 76 months",
+  "[PASS] EQ_US: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_US: no implausible monthly moves (>35%): flagged []",
+  "[PASS] EQ_EU: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_EU: no implausible monthly moves (>35%): flagged []",
+  "[PASS] EQ_EM: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_EM: no implausible monthly moves (>35%): flagged []",
+  "[PASS] EQ_WLD: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_WLD: no implausible monthly moves (>35%): flagged []",
+  "[PASS] EQ_DE: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_DE: no implausible monthly moves (>35%): flagged []",
+  "[PASS] GOLD: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] GOLD: no implausible monthly moves (>25%): flagged []",
+  "[PASS] BD_US10: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] BD_US10: no implausible monthly moves (>18%): flagged []",
+  "[PASS] BD_DE10: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] BD_DE10: no implausible monthly moves (>18%): flagged []",
+  "[PASS] BD_CZ10: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] BD_CZ10: no implausible monthly moves (>18%): flagged []",
+  "[PASS] CASH_EUR: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] CASH_EUR: no implausible monthly moves (>1%): flagged []",
+  "[PASS] window is current: window ends 2026-08, 2 months before today"
+ ]
+}
