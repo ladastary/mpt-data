@@ -15,7 +15,7 @@ import csv, io, json, math, os, sys, time, datetime as dt, urllib.request
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(ROOT, "raw")
 OUT = os.path.join(ROOT, "data")
-WINDOW_MONTHS = 300                      # 25 years
+MIN_MONTHS = 300                         # expanding window: all months every asset has, at least 25 years
 FETCH_FROM = dt.date(2000, 1, 1)         # a little history before the window
 TODAY = dt.date.today()
 CURRENT_MONTH = TODAY.strftime("%Y-%m")  # incomplete month, always excluded
@@ -444,12 +444,16 @@ def main():
     result = None
     if ret:
         ids = [a["id"] for a in ASSETS]
-        end = min(max(ret[i]) for i in ids)
-        start = month_add(end, -(WINDOW_MONTHS - 1))
+        end = min(max(ret[i]) for i in ids)      # last month every asset has
+        start = max(min(ret[i]) for i in ids)    # first month every asset has (MSCI net: Jan 2001)
+        start_by = {i: min(ret[i]) for i in ids}
+        log(f"First available month per asset: {start_by}")
+        check("window length", len(months_between(start, end)) >= MIN_MONTHS,
+              f"{start}..{end} = {len(months_between(start, end))} months (minimum {MIN_MONTHS})")
         dates = months_between(start, end)
         for a in ASSETS:
             missing = [m for m in dates if m not in ret[a["id"]]]
-            check(f"{a['id']}: full {WINDOW_MONTHS}-month coverage", not missing,
+            check(f"{a['id']}: no gaps in window", not missing,
                   f"{start}..{end}, missing {len(missing)} {missing[:3]}")
             lim = MAX_ABS_MONTHLY[a["cls"]]
             big = [(m, round(ret[a["id"]][m], 4)) for m in dates if m in ret[a["id"]] and abs(ret[a["id"]][m]) > lim]
