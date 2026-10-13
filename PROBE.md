@@ -2,19 +2,15 @@
 
 Run 2026-10-13
 
-## MSCI start-date tests
+## Kenneth French data library (monthly market return = Mkt-RF + RF)
 
-| code | variant | ccy | start asked | first | last | points / reply |
-|---|---|---|---|---|---|---|
-| 990100 | NETR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:53:25 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation date cannot be earlier than 19970101'"} |
-| 990100 | NETR | USD | 19991231 | 20001229 | 20260930 | 310 |
-| 990100 | NETR | USD | 20000630 | 20001229 | 20260930 | 310 |
-| 990100 | NETR | USD | 20001031 | 20001229 | 20260930 | 310 |
-| 990100 | NETR | USD | 20001130 | 20001229 | 20260930 | 310 |
-| 990100 | NETR | USD | 20001229 | 20001229 | 20260930 | 310 |
-| 990100 | NETR | USD | 20010131 | 20010131 | 20260930 | 309 |
-| 990100 | NETR | USD | 19991231 | 20001229 | 20051230 | 61 |
-| 990100 | STRD | USD | 19991231 | 19991231 | 20260930 | 322 |
+| file | first month | last month | months | header |
+|---|---|---|---|---|
+| F-F_Research_Data_Factors_CSV.zip | 192607 | 202608 | 1202 | Mkt-RF,SMB,HML,RF |
+| Developed_3_Factors_CSV.zip | 199007 | 202608 | 434 | Mkt-RF,SMB,HML,RF |
+| Europe_3_Factors_CSV.zip | 199007 | 202608 | 434 | Mkt-RF,SMB,HML,RF |
+| Emerging_5_Factors_CSV.zip | 198907 | 202608 | 446 | Mkt-RF,SMB,HML,RMW,CMA,RF |
+| Developed_ex_US_3_Factors_CSV.zip | 199007 | 202608 | 434 | Mkt-RF,SMB,HML,RF |
 
 ## FRED
 
