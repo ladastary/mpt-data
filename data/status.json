@@ -1,5 +1,5 @@
 {
- "run": "2026-10-13T09:07:37Z",
+ "run": "2026-10-13T15:03:15Z",
  "ok": true,
  "published": true,
  "checks": [
@@ -100,10 +100,16 @@
    "detail": "mean abs gap 0.012pp over 76 months"
   },
   {
-   "check": "EQ_US: full 300-month coverage",
+   "check": "window length",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08 = 308 months (minimum 300)"
+  },
+  {
+   "check": "EQ_US: no gaps in window",
+   "ok": true,
+   "hard": true,
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "EQ_US: no implausible monthly moves (>35%)",
@@ -112,10 +118,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "EQ_EU: full 300-month coverage",
+   "check": "EQ_EU: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "EQ_EU: no implausible monthly moves (>35%)",
@@ -124,10 +130,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "EQ_EM: full 300-month coverage",
+   "check": "EQ_EM: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "EQ_EM: no implausible monthly moves (>35%)",
@@ -136,10 +142,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "EQ_WLD: full 300-month coverage",
+   "check": "EQ_WLD: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "EQ_WLD: no implausible monthly moves (>35%)",
@@ -148,10 +154,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "EQ_DE: full 300-month coverage",
+   "check": "EQ_DE: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "EQ_DE: no implausible monthly moves (>35%)",
@@ -160,10 +166,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "GOLD: full 300-month coverage",
+   "check": "GOLD: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "GOLD: no implausible monthly moves (>25%)",
@@ -172,10 +178,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "BD_US10: full 300-month coverage",
+   "check": "BD_US10: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "BD_US10: no implausible monthly moves (>18%)",
@@ -184,10 +190,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "BD_DE10: full 300-month coverage",
+   "check": "BD_DE10: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "BD_DE10: no implausible monthly moves (>18%)",
@@ -196,10 +202,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "BD_CZ10: full 300-month coverage",
+   "check": "BD_CZ10: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "BD_CZ10: no implausible monthly moves (>18%)",
@@ -208,10 +214,10 @@
    "detail": "flagged []"
   },
   {
-   "check": "CASH_EUR: full 300-month coverage",
+   "check": "CASH_EUR: no gaps in window",
    "ok": true,
    "hard": true,
-   "detail": "2001-09..2026-08, missing 0 []"
+   "detail": "2001-01..2026-08, missing 0 []"
   },
   {
    "check": "CASH_EUR: no implausible monthly moves (>1%)",
@@ -245,25 +251,27 @@
   "[PASS] BD_DE10: yields in plausible range: 320 months, out-of-range: []",
   "[PASS] BD_CZ10: yields in plausible range: 317 months, out-of-range: []",
   "[PASS] CASH: call-money vs ESTR overlap: mean abs gap 0.012pp over 76 months",
-  "[PASS] EQ_US: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "First available month per asset: {'EQ_US': '2001-01', 'EQ_EU': '2001-01', 'EQ_EM': '2001-01', 'EQ_WLD': '2001-01', 'EQ_DE': '2001-01', 'GOLD': '2000-02', 'BD_US10': '2000-02', 'BD_DE10': '2000-02', 'BD_CZ10': '2000-05', 'CASH_EUR': '2000-01'}",
+  "[PASS] window length: 2001-01..2026-08 = 308 months (minimum 300)",
+  "[PASS] EQ_US: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] EQ_US: no implausible monthly moves (>35%): flagged []",
-  "[PASS] EQ_EU: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_EU: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] EQ_EU: no implausible monthly moves (>35%): flagged []",
-  "[PASS] EQ_EM: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_EM: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] EQ_EM: no implausible monthly moves (>35%): flagged []",
-  "[PASS] EQ_WLD: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_WLD: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] EQ_WLD: no implausible monthly moves (>35%): flagged []",
-  "[PASS] EQ_DE: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] EQ_DE: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] EQ_DE: no implausible monthly moves (>35%): flagged []",
-  "[PASS] GOLD: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] GOLD: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] GOLD: no implausible monthly moves (>25%): flagged []",
-  "[PASS] BD_US10: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] BD_US10: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] BD_US10: no implausible monthly moves (>18%): flagged []",
-  "[PASS] BD_DE10: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] BD_DE10: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] BD_DE10: no implausible monthly moves (>18%): flagged []",
-  "[PASS] BD_CZ10: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] BD_CZ10: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] BD_CZ10: no implausible monthly moves (>18%): flagged []",
-  "[PASS] CASH_EUR: full 300-month coverage: 2001-09..2026-08, missing 0 []",
+  "[PASS] CASH_EUR: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] CASH_EUR: no implausible monthly moves (>1%): flagged []",
   "[PASS] window is current: window ends 2026-08, 2 months before today"
  ]
