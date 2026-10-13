@@ -514,7 +514,8 @@ const M = (() => {
   // plus their simple average across windows (an average of correlation matrices stays PSD with unit diagonal).
   function rolling(series, W, step) {
     const n = series.length, T = series[0].length, wins = [];
-    for (let s = 0; s + W <= T; s += step) {
+    // Anchored at the latest month, so new data always enters; any months that don't fill a step drop off the oldest end.
+    for (let s = (T - W) % step; s + W <= T; s += step) {
       const cut = series.map(r => r.slice(s, s + W)), st = cut.map(annualise);
       const C = cut.map(() => new Array(n).fill(1));
       for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const c = corr(cut[i], cut[j]); C[i][j] = c; C[j][i] = c; }
@@ -535,13 +536,13 @@ const ASSETS = DATA.assets, N = ASSETS.length;
 const IDX = Object.fromEntries(ASSETS.map((a, i) => [a.id, i]));
 const SELECTABLE = ASSETS.map(a => !!a.defaultOn); // v0.1: default universe; optional assets arrive in v0.2
 const CASH_IDX = IDX.CASH_EUR;
-// Estimation bases (D2/D3). Default: average of rolling 10-year windows stepped yearly; alternative: one 25-year window.
+// Estimation bases (D2/D3). Default: average of rolling 10-year windows stepped yearly; alternative: one full-history window (expanding, since Jan 2001).
 const ROLL_W = 120, ROLL_STEP = 12;
 const ROLL = M.rolling(ASSETS.map(a => DATA.monthly.returns[a.id]), ROLL_W, ROLL_STEP);
 const BASES = {
   roll10: { id: "roll10", short: `10-year rolling, average of ${ROLL.windows.length}`, mu: ROLL.mu, vol: ROLL.vol, C: ROLL.C },
   full: {
-    id: "full", short: `Single ${Math.round(DATA.settings.window.months / 12)}-year window`,
+    id: "full", short: `Single ${(DATA.settings.window.months / 12).toFixed(1)}-year window`,
     mu: ASSETS.map(a => a.expRet), vol: ASSETS.map(a => a.vol),
     // Correlation re-ordered to ASSETS order (identical today; safe if the pipeline ever reorders).
     C: ASSETS.map(a => ASSETS.map(b => DATA.correlation.matrix[DATA.correlation.order.indexOf(a.id)][DATA.correlation.order.indexOf(b.id)]))
@@ -882,7 +883,7 @@ function buildAbout() {
   $("gold-warn").innerHTML = g ? `<b>Gold volatility is understated by roughly 15–20%.</b> The only automatable full-history source is the World Bank monthly-average price, which smooths month-end moves: σ shown ${pct(g.vol)}, true σ likely 16–17%. The optimizer therefore tends to over-weight gold (decision D12: accepted as is, no scaling).` : "";
   const b = DATA.usBondYieldBias;
   $("lims").innerHTML = [
-    "Rolling-window averaging (default basis) re-weights months: mid-history months (2010s: zero rates, QE, US equity boom) count up to 10×, the first and last months 1×. Switch to the single 25-year window to compare.",
+    "Rolling-window averaging (default basis) re-weights months: mid-history months (2010s: zero rates, QE, US equity boom) count up to 10×, the first and last months 1×. Switch to the single full-history window to compare.",
     "Historical means are used as expected returns (D2). Standard error of a 25-year mean at 16% vol ≈ 3.2pp a year; the optimizer over-weights whatever happened to win in this window. Weight caps are the main guard.",
     "The window starts shortly after the dot-com peak and spans the end of a 40-year bond rally (to 2022). Results depend on the window.",
     b ? `Bond volatility is understated because OECD yields are monthly averages. US 10Y test: σ ${pct(b.vol_monthlyAvgYield)} with monthly-average yields vs ${pct(b.vol_monthEndYield)} with month-end yields; the Bund is likely understated more.` : "Bond volatility is understated because OECD yields are monthly averages.",
@@ -924,7 +925,7 @@ function buildRollTable() {
     const v = w[key][i], c = v === ext[i][1] ? "hi" : v === ext[i][0] ? "lo" : "";
     return `<td class="n mono ${c}">${pct(v)}</td>`; }).join("") + "</tr>").join("");
   const avg = "<tr class='sum'><td>Average of windows</td>" + ids.map(i => `<td class="n mono">${pct(BASES.roll10[key][i])}</td>`).join("") + "</tr>";
-  const full = "<tr><td>Single 25-year window</td>" + ids.map(i => `<td class="n mono">${pct(BASES.full[key][i])}</td>`).join("") + "</tr>";
+  const full = `<tr><td>${BASES.full.short}</td>` + ids.map(i => `<td class="n mono">${pct(BASES.full[key][i])}</td>`).join("") + "</tr>";
   $("roll-table").innerHTML = `<thead>${head}</thead><tbody>${body}${avg}${full}</tbody>`;
   $("rv-mu").setAttribute("aria-pressed", String(key === "mu")); $("rv-vol").setAttribute("aria-pressed", String(key === "vol"));
 }
@@ -1149,8 +1150,8 @@ function runSelfTests(M, DATA) {
     const r = M.rolling(series, 120, 12), expect = Math.floor((T - 120) / 12) + 1;
     const one = M.rolling(series, T, 12); let g = 0;
     DATA.assets.forEach((a, i) => { g = Math.max(g, Math.abs(one.mu[i] - a.expRet), Math.abs(one.vol[i] - a.vol)); });
-    add("Rolling: window count and coverage", r.windows.length === expect && r.windows[0].start === 0 && r.windows[expect - 1].end === T - 1, `${r.windows.length} windows of 120 months, step 12, months 1–${T}`);
-    add("Rolling with one full-length window equals the 25-year stats", g <= 1e-6, `max gap ${g.toExponential(1)}`);
+    add("Rolling: window count and coverage", r.windows.length === expect && r.windows[0].start === (T - 120) % 12 && r.windows[expect - 1].end === T - 1, `${r.windows.length} windows of 120 months, step 12, months ${(T - 120) % 12 + 1}–${T} of ${T}`);
+    add("Rolling with one full-length window equals the full-window stats", g <= 1e-6, `max gap ${g.toExponential(1)}`);
     // Average of window means = trapezoid-weighted mean of monthly returns (identity check).
     let gm = 0;
     series.forEach((x, i) => { let s = 0, wsum = 0; for (let t = 0; t < T; t++) { const k = r.windows.filter(w => w.start <= t && t <= w.end).length; s += k * x[t]; wsum += k; } gm = Math.max(gm, Math.abs(s / wsum * 12 - r.mu[i])); });
