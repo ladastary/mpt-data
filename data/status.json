@@ -1,5 +1,5 @@
 {
- "run": "2026-10-13T08:31:03Z",
+ "run": "2026-10-13T08:50:59Z",
  "ok": true,
  "published": true,
  "checks": [
@@ -239,7 +239,7 @@
   "[PASS] EQ_DE: index code sanity (2008 USD return): MSCI 928000 2008 = -45.9%, expected about -45.9%",
   "[PASS] EQ_DE: MSCI EUR vs MSCI USD converted at our FX: mean abs monthly gap 0.17pp over 309 months",
   "LBMA gold unavailable: download failed: https://prices.lbma.org.uk/json/gold_pm.json (HTTP Error 403: Forbidden)",
-  "Bundesbank gold unavailable: Bundesbank: no matching series; D.XAU.USD.EA.AC.C05: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.USD.EA.AC.C05?format=sdmx_csv&startPeriod=2000-01-01 (HTTP Error 404: Not Found) | D.XAU.USD.EA.AC.: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.USD.EA.AC.?format=sdmx_csv&startPeriod=2000-01-01 (HTTP Error 404: Not Found) | D.XAU.....: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.....?format=sdmx_csv&startPeriod=2000-01-01 (HTTP Error 404: Not Found) | D..XAU....: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D..XAU....?format=sdmx_csv&startPeriod=2000-01-01 (The read operation timed out)",
+  "Bundesbank gold unavailable: Bundesbank: no matching series; D.XAU.USD.EA.AC.C05: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.USD.EA.AC.C05?format=sdmx_csv&startPeriod=2000-01-01 (HTTP Error 404: Not Found) | D.XAU.USD.EA.AC.: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.USD.EA.AC.?format=sdmx_csv&startPeriod=2000-01-01 (HTTP Error 404: Not Found) | D.XAU.....: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.....?format=sdmx_csv&startPeriod=2000-01-01 (HTTP Error 404: Not Found) | D..XAU....: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D..XAU....?format=sdmx_csv&startPeriod=2000-01-01 (HTTP Error 404: Not Found)",
   "[WARN] GOLD: month-end price available: no month-end source reachable - fallback uses monthly averages (vol understated)",
   "[PASS] BD_US10: yields in plausible range: 320 months, out-of-range: []",
   "[PASS] BD_DE10: yields in plausible range: 320 months, out-of-range: []",
