@@ -10,9 +10,9 @@ Built 2026-10-13 · window 2001-09 – 2026-08 (300 months) · all returns month
 | World equities (MSCI World) | 300 | 2001-09 | 2026-08 | 8.1% | 13.7% | 7.4% | -49.0% | -39.4% | optional | MSCI index 990100, net return, EUR (MSCI end-of-month data) |
 | German equities (MSCI Germany) | 300 | 2001-09 | 2026-08 | 7.4% | 19.5% | 5.7% | -55.0% | -54.1% | optional | MSCI index 928000, net return, EUR (MSCI end-of-month data) |
 | Gold | 300 | 2001-09 | 2026-08 | 11.1% | 13.7% | 10.7% | -34.7% | -30.6% | on | World Bank Pink Sheet, monthly AVERAGE USD price, EUR at month-end FX |
-| US Treasury 10Y | 300 | 2001-09 | 2026-08 | 2.7% | 10.1% | 2.2% | -24.1% | -16.3% | on | OECD 10Y govt yield via FRED IRLTLT01USM156N (monthly average); synthetic constant-maturity total return; USD->EUR at CNB month-end fixing |
+| US Treasury 10Y | 300 | 2001-09 | 2026-08 | 2.7% | 10.1% | 2.2% | -24.1% | -16.3% | on | OECD 10Y govt yield via FRED IRLTLT01USM156N (monthly average); synthetic constant-maturity total return; USD->EUR at month-end FX |
 | German Bund 10Y | 300 | 2001-09 | 2026-08 | 2.7% | 5.1% | 2.6% | -26.7% | -20.4% | on | OECD 10Y govt yield via FRED IRLTLT01DEM156N (monthly average); synthetic constant-maturity total return |
-| Czech govt 10Y | 300 | 2001-09 | 2026-08 | 5.4% | 7.9% | 5.2% | -24.0% | -20.7% | on | OECD 10Y govt yield via FRED IRLTLT01CZM156N (monthly average); synthetic constant-maturity total return; CZK->EUR at CNB month-end fixing |
+| Czech govt 10Y | 300 | 2001-09 | 2026-08 | 5.4% | 7.9% | 5.2% | -24.0% | -20.7% | on | OECD 10Y govt yield via FRED IRLTLT01CZM156N (monthly average); synthetic constant-maturity total return; CZK->EUR at month-end FX |
 | EUR cash | 300 | 2001-09 | 2026-08 | 1.3% | 0.5% | 1.3% | -3.0% | -0.6% | on | Euro-area call money rate (OECD via FRED IRSTCI01EZM156N); 2026-02..2026-09 from ESTR (ECB via FRED) |
 
 ## Correlation matrix
