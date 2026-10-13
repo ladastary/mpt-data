@@ -120,6 +120,7 @@ button { font: inherit; color: inherit; }
 .field label { font-size: 13px; }
 .field label small { display: block; font-size: 11.5px; }
 .field .num { grid-area: auto; }
+.field select { padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; max-width: 200px; }
 .field .num input { width: 74px; }
 
 /* Chart */
@@ -163,7 +164,9 @@ details.about > summary::-webkit-details-marker { display: none; }
 details.about > summary::before { content: "▸"; color: var(--ink-3); transition: transform .15s; display: inline-block; }
 details.about[open] > summary::before { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { details.about > summary::before { transition: none; } }
-.about .body { display: grid; gap: 18px; }
+.about .body { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+.about .body > * { min-width: 0; }
+details.about { min-width: 0; max-width: 100%; overflow: hidden; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 20px; font-size: 13px; }
 .facts div span { display: block; font-size: 11.5px; color: var(--ink-3); }
 .warnbox { border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); border-radius: var(--radius); padding: 10px 12px; font-size: 13px; }
@@ -186,6 +189,12 @@ tr:last-child td { border-bottom: none; }
 .heat td.diag { color: var(--ink-3); font-family: var(--font-mono); font-size: 12px; }
 .checks { font-size: 12.5px; display: grid; gap: 3px; }
 .checks .ok { color: var(--good); } .checks .fail { color: var(--bad); } .checks .soft { color: var(--warn-ink); }
+.seg { display: inline-flex; gap: 0; }
+.seg .btn { border-radius: 0; font-size: 12px; padding: 4px 10px; }
+.seg .btn:first-child { border-radius: 4px 0 0 4px; } .seg .btn:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
+.seg .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+tr.sum td { border-top: 1px solid var(--ink-3); font-weight: 500; }
+td.hi { color: var(--good); } td.lo { color: var(--bad); }
 .alert { border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); border-radius: 4px; padding: 8px 10px; font-size: 13px; }
 footer { padding-block: 10px 40px; color: var(--ink-3); font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
@@ -225,7 +234,8 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
     </div>
     <div class="assume">
       <div class="eyebrow">Assumptions</div>
-      <div class="field"><label for="in-rf">Risk-free rate <small id="rf-hint">Default: EUR cash mean over the window (D5)</small></label><span class="num"><input id="in-rf" type="number" step="0.01" inputmode="decimal">%</span></div>
+      <div class="field"><label for="in-basis">Estimation basis <small id="basis-hint">How μ, σ and correlations are estimated from the monthly history</small></label><select id="in-basis"></select></div>
+      <div class="field"><label for="in-rf">Risk-free rate <small id="rf-hint">Default: EUR cash mean on the estimation basis (D5)</small></label><span class="num"><input id="in-rf" type="number" step="0.01" inputmode="decimal">%</span></div>
       <div class="field"><label for="in-infl">Inflation <small>Used only for the real-return tile (D8)</small></label><span class="num"><input id="in-infl" type="number" step="0.1" inputmode="decimal">%</span></div>
       <div class="field"><label for="in-cap">Max weight per asset <small>Applies to frontier and recommendations (D6)</small></label><span class="num"><input id="in-cap" type="number" step="5" min="5" max="100" inputmode="decimal">%</span></div>
     </div>
@@ -275,7 +285,16 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
         <div class="scroll"><table id="stats-table"></table></div>
       </div>
       <div>
-        <h3 style="margin-bottom:6px">Correlation of monthly EUR returns</h3>
+        <h3 style="margin-bottom:6px">Rolling 10-year windows</h3>
+        <p class="muted" style="margin:0 0 6px; font-size:12.5px" id="roll-note"></p>
+        <div class="seg" role="group" aria-label="Rolling statistic">
+          <button type="button" class="btn" id="rv-mu" aria-pressed="true">Return</button>
+          <button type="button" class="btn" id="rv-vol" aria-pressed="false">Volatility</button>
+        </div>
+        <div class="scroll" style="margin-top:6px"><table id="roll-table"></table></div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:6px">Correlation of monthly EUR returns <span class="muted" style="font-weight:400; font-size:12.5px" id="corr-basis"></span></h3>
         <p class="muted" style="margin:0 0 6px; font-size:12.5px">Cells are editable; the mirror cell updates too. A matrix that is no longer positive semi-definite is repaired automatically.</p>
         <div class="alert" id="psd-alert" hidden></div>
         <div class="scroll" style="margin-top:6px"><table class="heat" id="corr-table"></table></div>
@@ -491,7 +510,23 @@ const M = (() => {
     return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : 0;
   }
 
-  return { dot, matVec, sum, covariance, stats, project, maxEig, solveMV, frontier, maxSharpe, retAtVol, volAtRet, jacobi, psdRepair, annualise, corr };
+  // Rolling windows of W months stepping by `step` months: annualised μ, σ and correlation per window,
+  // plus their simple average across windows (an average of correlation matrices stays PSD with unit diagonal).
+  function rolling(series, W, step) {
+    const n = series.length, T = series[0].length, wins = [];
+    for (let s = 0; s + W <= T; s += step) {
+      const cut = series.map(r => r.slice(s, s + W)), st = cut.map(annualise);
+      const C = cut.map(() => new Array(n).fill(1));
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const c = corr(cut[i], cut[j]); C[i][j] = c; C[j][i] = c; }
+      wins.push({ start: s, end: s + W - 1, mu: st.map(x => x.mu), vol: st.map(x => x.vol), C });
+    }
+    const k = wins.length, mu = new Array(n).fill(0), vol = new Array(n).fill(0), C = Array.from({ length: n }, () => new Array(n).fill(0));
+    for (const w of wins) for (let i = 0; i < n; i++) { mu[i] += w.mu[i] / k; vol[i] += w.vol[i] / k; for (let j = 0; j < n; j++) C[i][j] += w.C[i][j] / k; }
+    for (let i = 0; i < n; i++) C[i][i] = 1;
+    return { windows: wins, mu, vol, C };
+  }
+
+  return { dot, matVec, sum, covariance, stats, project, maxEig, solveMV, frontier, maxSharpe, retAtVol, volAtRet, jacobi, psdRepair, annualise, corr, rolling };
 })();
 // ===== END MATH =====
 
@@ -500,14 +535,22 @@ const ASSETS = DATA.assets, N = ASSETS.length;
 const IDX = Object.fromEntries(ASSETS.map((a, i) => [a.id, i]));
 const SELECTABLE = ASSETS.map(a => !!a.defaultOn); // v0.1: default universe; optional assets arrive in v0.2
 const CASH_IDX = IDX.CASH_EUR;
-const HIST = {
-  mu: ASSETS.map(a => a.expRet),
-  vol: ASSETS.map(a => a.vol),
-  // Correlation re-ordered to ASSETS order (identical today; safe if the pipeline ever reorders).
-  C: ASSETS.map(a => ASSETS.map(b => DATA.correlation.matrix[DATA.correlation.order.indexOf(a.id)][DATA.correlation.order.indexOf(b.id)]))
+// Estimation bases (D2/D3). Default: average of rolling 10-year windows stepped yearly; alternative: one 25-year window.
+const ROLL_W = 120, ROLL_STEP = 12;
+const ROLL = M.rolling(ASSETS.map(a => DATA.monthly.returns[a.id]), ROLL_W, ROLL_STEP);
+const BASES = {
+  roll10: { id: "roll10", short: `10-year rolling, average of ${ROLL.windows.length}`, mu: ROLL.mu, vol: ROLL.vol, C: ROLL.C },
+  full: {
+    id: "full", short: `Single ${Math.round(DATA.settings.window.months / 12)}-year window`,
+    mu: ASSETS.map(a => a.expRet), vol: ASSETS.map(a => a.vol),
+    // Correlation re-ordered to ASSETS order (identical today; safe if the pipeline ever reorders).
+    C: ASSETS.map(a => ASSETS.map(b => DATA.correlation.matrix[DATA.correlation.order.indexOf(a.id)][DATA.correlation.order.indexOf(b.id)]))
+  }
 };
+let HIST = BASES.roll10;
 
 const STATE = {
+  basis: "roll10",
   incl: SELECTABLE.slice(),
   w: new Array(N).fill(0),
   lock: new Array(N).fill(false),
@@ -819,7 +862,8 @@ function renderRecs(m, s) {
   const n = m.sub.length;
   $("rec-scope").textContent = `${n} asset${n === 1 ? "" : "s"} · long-only · cap ${pct(m.capEff, 0)} per asset`;
   $("rec-caveat").textContent = (m.capRaised ? `Cap raised to ${pct(m.capEff, 1)} so ${n} assets can sum to 100%. ` : "")
-    + "Expected returns are 25-year historical means; at 16% volatility the standard error of a 25-year mean is about 3.2pp a year, so the optimizer over-weights whatever won in this window. Treat weights as indicative and use the cap to temper them.";
+    + (STATE.basis === "roll10" ? `Expected returns are averages of ${ROLL.windows.length} rolling 10-year historical means; across windows US equities ranged ${pct(Math.min(...ROLL.windows.map(w => w.mu[IDX.EQ_US])), 0)} to ${pct(Math.max(...ROLL.windows.map(w => w.mu[IDX.EQ_US])), 0)}. ` : "")
+    + "Historical means are noisy forecasts: at 16% volatility the standard error of a 25-year mean is about 3.2pp a year (10-year: 5pp), so the optimizer over-weights whatever won in this window. Treat weights as indicative and use the cap to temper them.";
 }
 
 function applyWeights(wf) {
@@ -833,19 +877,12 @@ function buildAbout() {
   const st = DATA.settings, hard = DATA.checks.filter(c => c.hard), soft = DATA.checks.filter(c => !c.hard);
   const hardOk = hard.filter(c => c.ok).length, softWarn = soft.filter(c => !c.ok);
   $("about-sum").textContent = `${ym(st.window.start)} – ${ym(st.window.end)} · ${st.window.months} months · ${hardOk}/${hard.length} hard checks passed`;
-  $("facts").innerHTML = [
-    ["Window", `${ym(st.window.start)} – ${ym(st.window.end)} (${st.window.months} complete months)`],
-    ["Currency and returns", `${st.baseCurrency}, unhedged, ${st.returnBasis} monthly total returns`],
-    ["FX conversion", st.fx],
-    ["Annualisation", "μ = mean × 12; σ = sample stdev × √12; correlations from monthly EUR returns"],
-    ["Risk-free default", `${st.riskFreeSource} = ${pct(HIST.mu[CASH_IDX], 2)}`],
-    ["Data build / page build", `${st.built} / ${PAGE_BUILT}`],
-    ["Pipeline", "github.com/ladastary/mpt-data, GitHub Actions, 3rd of each month"]
-  ].map(([k, v]) => `<div><span>${esc(k)}</span>${esc(v)}</div>`).join("");
+  buildFacts();
   const g = ASSETS[IDX.GOLD];
   $("gold-warn").innerHTML = g ? `<b>Gold volatility is understated by roughly 15–20%.</b> The only automatable full-history source is the World Bank monthly-average price, which smooths month-end moves: σ shown ${pct(g.vol)}, true σ likely 16–17%. The optimizer therefore tends to over-weight gold (decision D12: accepted as is, no scaling).` : "";
   const b = DATA.usBondYieldBias;
   $("lims").innerHTML = [
+    "Rolling-window averaging (default basis) re-weights months: mid-history months (2010s: zero rates, QE, US equity boom) count up to 10×, the first and last months 1×. Switch to the single 25-year window to compare.",
     "Historical means are used as expected returns (D2). Standard error of a 25-year mean at 16% vol ≈ 3.2pp a year; the optimizer over-weights whatever happened to win in this window. Weight caps are the main guard.",
     "The window starts shortly after the dot-com peak and spans the end of a 40-year bond rally (to 2022). Results depend on the window.",
     b ? `Bond volatility is understated because OECD yields are monthly averages. US 10Y test: σ ${pct(b.vol_monthlyAvgYield)} with monthly-average yields vs ${pct(b.vol_monthEndYield)} with month-end yields; the Bund is likely understated more.` : "Bond volatility is understated because OECD yields are monthly averages.",
@@ -858,14 +895,47 @@ function buildAbout() {
     + `<details><summary style="cursor:pointer; color:var(--ink-2)">Show all ${hc.length} checks</summary><div class="checks" style="margin-top:6px">`
     + hc.map(c => `<div><span class="${c.ok ? "ok" : c.hard ? "fail" : "soft"}">${c.ok ? "✓" : c.hard ? "✗" : "!"}</span> ${esc(c.check)} <span class="muted">· ${esc(c.detail)}</span></div>`).join("")
     + "</div></details>";
-  buildStatsTable(); buildCorrTable();
+  buildStatsTable(); buildCorrTable(); buildRollTable();
+}
+function buildFacts() {
+  const st = DATA.settings, nW = ROLL.windows.length;
+  const method = STATE.basis === "roll10"
+    ? `Average of ${nW} rolling 10-year windows stepped yearly (${winLabel(ROLL.windows[0])} … ${winLabel(ROLL.windows[nW - 1])}). In each window μ = mean × 12, σ = sample stdev × √12, correlation from monthly EUR returns; then the ${nW} values are averaged.`
+    : "One window over the full history: μ = mean × 12; σ = sample stdev × √12; correlations from monthly EUR returns.";
+  $("facts").innerHTML = [
+    ["History", `${ym(st.window.start)} – ${ym(st.window.end)} (${st.window.months} complete months)`],
+    ["Estimation basis", method],
+    ["Currency and returns", `${st.baseCurrency}, unhedged, ${st.returnBasis} monthly total returns`],
+    ["FX conversion", st.fx],
+    ["Risk-free default", `EUR cash mean on this basis = ${pct(HIST.mu[CASH_IDX], 2)}`],
+    ["Data build / page build", `${st.built} / ${PAGE_BUILT}`],
+    ["Pipeline", "github.com/ladastary/mpt-data, GitHub Actions, 3rd of each month"]
+  ].map(([k, v]) => `<div><span>${esc(k)}</span>${esc(v)}</div>`).join("");
+  $("corr-basis").textContent = "· " + HIST.short;
+}
+const winLabel = w => `${ym(DATA.monthly.dates[w.start])}–${ym(DATA.monthly.dates[w.end])}`;
+let rollView = "mu";
+function buildRollTable() {
+  const nW = ROLL.windows.length, key = rollView, ids = ASSETS.map((a, i) => i);
+  $("roll-note").textContent = `${nW} windows of 120 months, each starting one year after the previous. Months in the middle of the history fall into up to 10 windows; the first and last months into one, so the average weights the 2010s most. Green = best window, red = worst.`;
+  const head = "<tr><th>Window</th>" + ids.map(i => `<th class="n" title="${esc(ASSETS[i].name)}">${esc(SHORT[ASSETS[i].id] || ASSETS[i].id)}</th>`).join("") + "</tr>";
+  const ext = ids.map(i => { const v = ROLL.windows.map(w => w[key][i]); return [Math.min(...v), Math.max(...v)]; });
+  const body = ROLL.windows.map(w => "<tr><td class='mono'>" + esc(winLabel(w)) + "</td>" + ids.map(i => {
+    const v = w[key][i], c = v === ext[i][1] ? "hi" : v === ext[i][0] ? "lo" : "";
+    return `<td class="n mono ${c}">${pct(v)}</td>`; }).join("") + "</tr>").join("");
+  const avg = "<tr class='sum'><td>Average of windows</td>" + ids.map(i => `<td class="n mono">${pct(BASES.roll10[key][i])}</td>`).join("") + "</tr>";
+  const full = "<tr><td>Single 25-year window</td>" + ids.map(i => `<td class="n mono">${pct(BASES.full[key][i])}</td>`).join("") + "</tr>";
+  $("roll-table").innerHTML = `<thead>${head}</thead><tbody>${body}${avg}${full}</tbody>`;
+  $("rv-mu").setAttribute("aria-pressed", String(key === "mu")); $("rv-vol").setAttribute("aria-pressed", String(key === "vol"));
 }
 function buildStatsTable() {
-  const head = `<tr><th>Asset</th><th class="n">Exp. return %</th><th class="n">Volatility %</th><th class="n">CAGR</th><th class="n">Max DD</th><th class="n">Worst 12m</th><th>Series</th><th>Source</th><th>UCITS proxy</th><th>Retrieved</th></tr>`;
+  const head = `<tr><th>Asset</th><th class="n">Exp. return %</th><th class="n">Volatility %</th><th class="n">10y μ range</th><th class="n">10y σ range</th><th class="n">25y CAGR</th><th class="n">Max DD</th><th class="n">Worst 12m</th><th>Series</th><th>Source</th><th>UCITS proxy</th><th>Retrieved</th></tr>`;
   const body = ASSETS.map((a, i) => `<tr>
     <td><span class="sw" style="display:inline-block; margin-right:6px; --c:${colorVar(a.id)}"></span>${esc(a.name)}${a.defaultOn ? "" : ' <span class="tag">optional</span>'}</td>
     <td class="n"><input class="edit" id="ed-mu-${a.id}" type="number" step="0.1" inputmode="decimal" aria-label="${esc(plainName(a))} expected return"></td>
     <td class="n"><input class="edit" id="ed-vol-${a.id}" type="number" step="0.1" min="0" inputmode="decimal" aria-label="${esc(plainName(a))} volatility"></td>
+    <td class="n mono">${pct(Math.min(...ROLL.windows.map(w => w.mu[i])))} – ${pct(Math.max(...ROLL.windows.map(w => w.mu[i])))}</td>
+    <td class="n mono">${pct(Math.min(...ROLL.windows.map(w => w.vol[i])))} – ${pct(Math.max(...ROLL.windows.map(w => w.vol[i])))}</td>
     <td class="n mono">${pct(a.cagr)}</td><td class="n mono">${pct(a.maxDD)}</td><td class="n mono">${pct(a.worst12m)}</td>
     <td>${esc(a.seriesType)}</td><td class="wrapc">${esc(a.source)}</td><td>${esc(a.proxy)}</td><td class="mono">${esc(a.retrieved)}</td></tr>`).join("");
   $("stats-table").innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
@@ -907,7 +977,7 @@ function buildHeader() {
   const [wy, wm] = st.window.end.split("-").map(Number), now = new Date();
   const lag = now.getFullYear() * 12 + now.getMonth() + 1 - (wy * 12 + wm);
   const stale = lag > 3 ? ` <span class="chip warn">window ends ${lag} months ago: check the pipeline</span>` : "";
-  $("top-meta").innerHTML = `25 years of monthly EUR returns · <span class="mono">${ym(st.window.start)} – ${ym(st.window.end)}</span> · data built <span class="mono">${esc(st.built)}</span>${stale}`;
+  $("top-meta").innerHTML = `Monthly EUR returns <span class="mono">${ym(st.window.start)} – ${ym(st.window.end)}</span> · estimates: <span id="meta-basis"></span> · data built <span class="mono">${esc(st.built)}</span>${stale}`;
   $("foot-build").textContent = `v0.1 · page built ${PAGE_BUILT} · data ${st.built} from ladastary/mpt-data`;
 }
 // ===== END UI =====
@@ -919,6 +989,13 @@ function render() {
   const m = buildModel(), s = renderMetrics();
   renderChart(m, s); renderPosition(m, s); renderRecs(m, s);
   try { history.replaceState(null, "", "#" + encodeHash()); } catch (e) { /* not available in some frames */ }
+}
+function setBasis(b) {
+  HIST = BASES[b]; STATE.basis = b;
+  STATE.muRaw = HIST.mu.slice(); STATE.vol = HIST.vol.slice(); STATE.C = HIST.C.map(r => r.slice());
+  STATE.rf = HIST.mu[CASH_IDX]; $("in-rf").value = (STATE.rf * 100).toFixed(2);
+  $("psd-alert").hidden = true; $("meta-basis").textContent = HIST.short;
+  buildFacts(); syncStatsTable(); syncCorrTable(); syncBuilder(); schedule();
 }
 function onCorrChange(i, j, raw) {
   let v = Number(raw); if (!isFinite(v)) return;
@@ -949,6 +1026,12 @@ function wire() {
     STATE.muRaw = HIST.mu.slice(); STATE.vol = HIST.vol.slice(); STATE.C = HIST.C.map(r => r.slice());
     $("psd-alert").hidden = true; syncStatsTable(); syncCorrTable(); syncBuilder(); schedule();
   });
+  const inBasis = $("in-basis");
+  inBasis.innerHTML = Object.values(BASES).map(b => `<option value="${b.id}">${esc(b.short)}</option>`).join("");
+  inBasis.value = STATE.basis; $("meta-basis").textContent = HIST.short;
+  inBasis.addEventListener("change", () => setBasis(inBasis.value));
+  $("rv-mu").addEventListener("click", () => { rollView = "mu"; buildRollTable(); });
+  $("rv-vol").addEventListener("click", () => { rollView = "vol"; buildRollTable(); });
   const inRf = $("in-rf"), inInfl = $("in-infl"), inCap = $("in-cap");
   inRf.value = (STATE.rf * 100).toFixed(2); inInfl.value = (STATE.infl * 100).toFixed(1); inCap.value = (STATE.cap * 100).toFixed(0);
   inRf.addEventListener("change", () => { const v = Number(inRf.value); if (isFinite(v)) { STATE.rf = v / 100; schedule(); } });
@@ -1061,6 +1144,19 @@ function runSelfTests(M, DATA) {
     const h = M.jacobi(Cfull); let rec = 0;
     for (let i = 0; i < Cfull.length; i++) for (let j = 0; j < Cfull.length; j++) { let s = 0; for (let k = 0; k < Cfull.length; k++) s += h.vectors[i][k] * h.values[k] * h.vectors[j][k]; rec = Math.max(rec, Math.abs(s - Cfull[i][j])); }
     add("Historical correlation matrix is PSD (Jacobi check)", Math.min(...h.values) > -1e-10 && rec < 1e-10, `min eigenvalue ${Math.min(...h.values).toFixed(4)}, reconstruction error ${rec.toExponential(1)}`); }
+  // Rolling 10-year windows
+  { const series = DATA.assets.map(a => DATA.monthly.returns[a.id]), T = DATA.monthly.dates.length;
+    const r = M.rolling(series, 120, 12), expect = Math.floor((T - 120) / 12) + 1;
+    const one = M.rolling(series, T, 12); let g = 0;
+    DATA.assets.forEach((a, i) => { g = Math.max(g, Math.abs(one.mu[i] - a.expRet), Math.abs(one.vol[i] - a.vol)); });
+    add("Rolling: window count and coverage", r.windows.length === expect && r.windows[0].start === 0 && r.windows[expect - 1].end === T - 1, `${r.windows.length} windows of 120 months, step 12, months 1–${T}`);
+    add("Rolling with one full-length window equals the 25-year stats", g <= 1e-6, `max gap ${g.toExponential(1)}`);
+    // Average of window means = trapezoid-weighted mean of monthly returns (identity check).
+    let gm = 0;
+    series.forEach((x, i) => { let s = 0, wsum = 0; for (let t = 0; t < T; t++) { const k = r.windows.filter(w => w.start <= t && t <= w.end).length; s += k * x[t]; wsum += k; } gm = Math.max(gm, Math.abs(s / wsum * 12 - r.mu[i])); });
+    const e = M.jacobi(r.C), mn = Math.min(...e.values), unit = r.C.every((row, i) => row[i] === 1);
+    add("Rolling average μ equals window-count-weighted monthly mean", gm < 1e-12, `max gap ${gm.toExponential(1)}`);
+    add("Averaged correlation matrix is PSD with unit diagonal", mn > -1e-10 && unit, `min eigenvalue ${mn.toFixed(4)}`); }
   return out;
 }
 // ===== END TESTS =====
