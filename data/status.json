@@ -1,13 +1,13 @@
 {
- "run": "2026-10-13T08:22:20Z",
+ "run": "2026-10-13T08:27:46Z",
  "ok": true,
  "published": true,
  "checks": [
   {
-   "check": "FX: CNB EUR/USD vs Fed H.10",
+   "check": "FX: Fed EUR/USD vs CNB cross-rate",
    "ok": true,
    "hard": true,
-   "detail": "max month-end gap 1.64% over 321 months"
+   "detail": "max month-end gap 1.67% over 321 months"
   },
   {
    "check": "EQ_US: index code sanity (2008 USD return)",
@@ -16,10 +16,10 @@
    "detail": "MSCI 984000 2008 = -37.6%, expected about -37.6%"
   },
   {
-   "check": "EQ_US: MSCI EUR vs USD converted at CNB FX",
+   "check": "EQ_US: MSCI EUR vs MSCI USD converted at our FX",
    "ok": true,
    "hard": true,
-   "detail": "mean abs monthly gap 0.37pp over 309 months"
+   "detail": "mean abs monthly gap 0.17pp over 309 months"
   },
   {
    "check": "EQ_EU: index code sanity (2008 USD return)",
@@ -28,10 +28,10 @@
    "detail": "MSCI 990500 2008 = -46.4%, expected about -46.4%"
   },
   {
-   "check": "EQ_EU: MSCI EUR vs USD converted at CNB FX",
+   "check": "EQ_EU: MSCI EUR vs MSCI USD converted at our FX",
    "ok": true,
    "hard": true,
-   "detail": "mean abs monthly gap 0.37pp over 309 months"
+   "detail": "mean abs monthly gap 0.17pp over 309 months"
   },
   {
    "check": "EQ_EM: index code sanity (2008 USD return)",
@@ -40,10 +40,10 @@
    "detail": "MSCI 891800 2008 = -53.3%, expected about -53.3%"
   },
   {
-   "check": "EQ_EM: MSCI EUR vs USD converted at CNB FX",
+   "check": "EQ_EM: MSCI EUR vs MSCI USD converted at our FX",
    "ok": true,
    "hard": true,
-   "detail": "mean abs monthly gap 0.37pp over 309 months"
+   "detail": "mean abs monthly gap 0.17pp over 309 months"
   },
   {
    "check": "EQ_WLD: index code sanity (2008 USD return)",
@@ -52,10 +52,10 @@
    "detail": "MSCI 990100 2008 = -40.7%, expected about -40.7%"
   },
   {
-   "check": "EQ_WLD: MSCI EUR vs USD converted at CNB FX",
+   "check": "EQ_WLD: MSCI EUR vs MSCI USD converted at our FX",
    "ok": true,
    "hard": true,
-   "detail": "mean abs monthly gap 0.37pp over 309 months"
+   "detail": "mean abs monthly gap 0.17pp over 309 months"
   },
   {
    "check": "EQ_DE: index code sanity (2008 USD return)",
@@ -64,16 +64,16 @@
    "detail": "MSCI 928000 2008 = -45.9%, expected about -45.9%"
   },
   {
-   "check": "EQ_DE: MSCI EUR vs USD converted at CNB FX",
+   "check": "EQ_DE: MSCI EUR vs MSCI USD converted at our FX",
    "ok": true,
    "hard": true,
-   "detail": "mean abs monthly gap 0.36pp over 309 months"
+   "detail": "mean abs monthly gap 0.17pp over 309 months"
   },
   {
    "check": "GOLD: month-end price available",
    "ok": false,
    "hard": false,
-   "detail": "LBMA feed unavailable - fallback uses monthly averages (vol understated)"
+   "detail": "no month-end source reachable - fallback uses monthly averages (vol understated)"
   },
   {
    "check": "BD_US10: yields in plausible range",
@@ -227,19 +227,20 @@
   }
  ],
  "log": [
-  "[PASS] FX: CNB EUR/USD vs Fed H.10: max month-end gap 1.64% over 321 months",
+  "[PASS] FX: Fed EUR/USD vs CNB cross-rate: max month-end gap 1.67% over 321 months",
   "[PASS] EQ_US: index code sanity (2008 USD return): MSCI 984000 2008 = -37.6%, expected about -37.6%",
-  "[PASS] EQ_US: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.37pp over 309 months",
+  "[PASS] EQ_US: MSCI EUR vs MSCI USD converted at our FX: mean abs monthly gap 0.17pp over 309 months",
   "[PASS] EQ_EU: index code sanity (2008 USD return): MSCI 990500 2008 = -46.4%, expected about -46.4%",
-  "[PASS] EQ_EU: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.37pp over 309 months",
+  "[PASS] EQ_EU: MSCI EUR vs MSCI USD converted at our FX: mean abs monthly gap 0.17pp over 309 months",
   "[PASS] EQ_EM: index code sanity (2008 USD return): MSCI 891800 2008 = -53.3%, expected about -53.3%",
-  "[PASS] EQ_EM: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.37pp over 309 months",
+  "[PASS] EQ_EM: MSCI EUR vs MSCI USD converted at our FX: mean abs monthly gap 0.17pp over 309 months",
   "[PASS] EQ_WLD: index code sanity (2008 USD return): MSCI 990100 2008 = -40.7%, expected about -40.7%",
-  "[PASS] EQ_WLD: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.37pp over 309 months",
+  "[PASS] EQ_WLD: MSCI EUR vs MSCI USD converted at our FX: mean abs monthly gap 0.17pp over 309 months",
   "[PASS] EQ_DE: index code sanity (2008 USD return): MSCI 928000 2008 = -45.9%, expected about -45.9%",
-  "[PASS] EQ_DE: MSCI EUR vs USD converted at CNB FX: mean abs monthly gap 0.36pp over 309 months",
-  "LBMA gold unavailable (download failed: https://prices.lbma.org.uk/json/gold_pm.json (HTTP Error 403: Forbidden)); using World Bank monthly average",
-  "[WARN] GOLD: month-end price available: LBMA feed unavailable - fallback uses monthly averages (vol understated)",
+  "[PASS] EQ_DE: MSCI EUR vs MSCI USD converted at our FX: mean abs monthly gap 0.17pp over 309 months",
+  "LBMA gold unavailable: download failed: https://prices.lbma.org.uk/json/gold_pm.json (HTTP Error 403: Forbidden)",
+  "Bundesbank gold unavailable: download failed: https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.USD..?format=sdmx_csv&startPeriod=2000-01-01 (HTTP Error 404: Not Found)",
+  "[WARN] GOLD: month-end price available: no month-end source reachable - fallback uses monthly averages (vol understated)",
   "[PASS] BD_US10: yields in plausible range: 320 months, out-of-range: []",
   "[PASS] BD_DE10: yields in plausible range: 320 months, out-of-range: []",
   "[PASS] BD_CZ10: yields in plausible range: 317 months, out-of-range: []",
