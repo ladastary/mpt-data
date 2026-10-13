@@ -6,26 +6,15 @@ Run 2026-10-13
 
 | code | variant | ccy | start asked | first | last | points / reply |
 |---|---|---|---|---|---|---|
-| 990100 | NETR | USD | 19691231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:27 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19691231. Calculation |
-| 990100 | NETR | USD | 19781229 | - | - | {"timestamp":"Oct 13, 2026, 2:52:27 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19781229. Calculation |
-| 990100 | NETR | USD | 19841231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:27 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19841231. Calculation |
-| 990100 | NETR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:28 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 990100 | NETR | USD | 19881230 | - | - | {"timestamp":"Oct 13, 2026, 2:52:28 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19881230. Calculation |
-| 990100 | NETR | USD | 19921231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:28 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19921231. Calculation |
-| 990100 | NETR | USD | 19951229 | - | - | {"timestamp":"Oct 13, 2026, 2:52:28 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19951229. Calculation |
-| 990100 | NETR | USD | 19981231 | 20001229 | 20260930 | 310 |
-| 990100 | NETR | USD | 19691231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:29 PM","user":"sys_x_bmapip01","error_code":" 100 100","error_message":" null Invalid Parameter start_date : '19691231. Calcula |
-| 990100 | NETR | USD | 19891229 | - | - | {"timestamp":"Oct 13, 2026, 2:52:29 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19891229. Calculation |
-| 984000 | NETR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:30 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 984000 | GRTR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:30 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 990500 | NETR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:30 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 990500 | GRTR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:30 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 928000 | NETR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:31 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 928000 | GRTR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:31 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 891800 | NETR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:31 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 891800 | GRTR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:32 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 990100 | NETR | EUR | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:32 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
-| 891800 | NETR | EUR | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:52:32 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation |
+| 990100 | NETR | USD | 19871231 | - | - | {"timestamp":"Oct 13, 2026, 2:53:25 PM","user":"sys_x_bmapip01","error_code":" 100","error_message":" null Invalid Parameter start_date : '19871231. Calculation date cannot be earlier than 19970101'"} |
+| 990100 | NETR | USD | 19991231 | 20001229 | 20260930 | 310 |
+| 990100 | NETR | USD | 20000630 | 20001229 | 20260930 | 310 |
+| 990100 | NETR | USD | 20001031 | 20001229 | 20260930 | 310 |
+| 990100 | NETR | USD | 20001130 | 20001229 | 20260930 | 310 |
+| 990100 | NETR | USD | 20001229 | 20001229 | 20260930 | 310 |
+| 990100 | NETR | USD | 20010131 | 20010131 | 20260930 | 309 |
+| 990100 | NETR | USD | 19991231 | 20001229 | 20051230 | 61 |
+| 990100 | STRD | USD | 19991231 | 19991231 | 20260930 | 322 |
 
 ## FRED
 
