@@ -15,20 +15,15 @@ def msci_try(code, var, ccy, s, e=None):
         j = json.loads(t)
         lv = j.get("indexes", {}).get("INDEX_LEVELS")
         if not lv:
-            row(code, var, ccy, s, "-", "-", t[:160].replace("|", "/"))
+            row(code, var, ccy, s, "-", "-", t[:600].replace("|", "/"))
         else:
             row(code, var, ccy, s, lv[0]["calc_date"], lv[-1]["calc_date"], len(lv))
     except Exception as ex:
         row(code, var, ccy, s, "ERR", "", str(ex)[:100])
-for s0 in ["19691231", "19781229", "19841231", "19871231", "19881230", "19921231", "19951229", "19981231"]:
+for s0 in ["19871231", "19991231", "20000630", "20001031", "20001130", "20001229", "20010131"]:
     msci_try("990100", "NETR", "USD", s0)
-for s0, e0 in [("19691231", "19891229"), ("19891229", "20091231")]:
-    msci_try("990100", "NETR", "USD", s0, e0)
-for code in ["984000", "990500", "928000", "891800"]:
-    for var in ["NETR", "GRTR"]:
-        msci_try(code, var, "USD", "19871231")
-for code in ["990100", "891800"]:
-    msci_try(code, "NETR", "EUR", "19871231")
+msci_try("990100", "NETR", "USD", "19991231", "20051230")
+msci_try("990100", "STRD", "USD", "19991231")
 L += ["", "## FRED", "", "| series | first | last | obs |", "|---|---|---|---|"]
 for s in ["IRLTLT01CZM156N", "IRLTLT01DEM156N", "IRLTLT01USM156N", "DGS10", "GS10", "IRSTCI01EZM156N",
           "IRSTCI01DEM156N", "IR3TIB01DEM156N", "IR3TIB01CZM156N", "IRSTCI01CZM156N", "DEXUSEU", "DEXGEUS", "EXGEUS",
