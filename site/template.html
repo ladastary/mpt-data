@@ -1,0 +1,1067 @@
+<title>MPT Portfolio Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: analyst workbench. Sticky metrics band on top; portfolio builder (left) beside frontier + recommendations (right); data provenance below. One column on phones. */
+:root {
+  --bg: #f2f5f6;
+  --surface: #ffffff;
+  --surface-2: #e9eff1;
+  --ink: #0e1a20;
+  --ink-2: #44555d;
+  --ink-3: #6f8088;
+  --line: #d4dde1;
+  --accent: #0b6584;
+  --accent-ink: #ffffff;
+  --accent-soft: #d8ebf2;
+  --good: #11801b;
+  --bad: #c23434;
+  --warn-bg: #fff3d1;
+  --warn-line: #d89a00;
+  --warn-ink: #5e4100;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --div-neg: #2a78d6; --div-pos: #e34948; --div-mid: #f0efec;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1114; --surface: #121a1e; --surface-2: #19242a; --ink: #e5ecef; --ink-2: #a4b4bb; --ink-3: #72848c;
+    --line: #25333a; --accent: #4cb2d4; --accent-ink: #04212b; --accent-soft: #15333f;
+    --good: #46c252; --bad: #f07070; --warn-bg: #2c2410; --warn-line: #c98500; --warn-ink: #f1d48a;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --div-neg: #3987e5; --div-pos: #e66767; --div-mid: #383835;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1114; --surface: #121a1e; --surface-2: #19242a; --ink: #e5ecef; --ink-2: #a4b4bb; --ink-3: #72848c;
+  --line: #25333a; --accent: #4cb2d4; --accent-ink: #04212b; --accent-soft: #15333f;
+  --good: #46c252; --bad: #f07070; --warn-bg: #2c2410; --warn-line: #c98500; --warn-ink: #f1d48a;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --div-neg: #3987e5; --div-pos: #e66767; --div-mid: #383835;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 28px); }
+.mono, .num input, td.n, .tile .v { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 18px; font-weight: 600; }
+h3 { font-size: 15px; font-weight: 600; }
+.eyebrow { font-family: var(--font-display); font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+small, .muted { color: var(--ink-2); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Header */
+.top { padding-block: 20px 12px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; }
+.top .meta { color: var(--ink-2); font-size: 13px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); font-size: 11.5px; font-family: var(--font-mono); color: var(--ink-2); background: var(--surface); }
+.chip.warn { border-color: var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); }
+
+/* Metrics band */
+.band { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-block: 10px; }
+.tile { background: var(--surface); padding: 8px 12px 9px; min-width: 0; }
+.tile .k { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .v { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; }
+.tile .d { font-size: 11.5px; font-family: var(--font-mono); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.3em; }
+.d .good { color: var(--good); } .d .bad { color: var(--bad); }
+@media (max-width: 760px) {
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-block: 8px; }
+  .tile { padding: 6px 9px 7px; }
+  .tile .v { font-size: 17px; }
+  .tile .d { font-size: 10.5px; }
+}
+
+/* Main grid */
+.grid { display: grid; gap: 20px; padding-block: 16px 8px; }
+@media (min-width: 1000px) { .grid { grid-template-columns: minmax(380px, 440px) minmax(0, 1fr); align-items: start; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+.panel > header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 12px 14px 8px; flex-wrap: wrap; }
+.panel .body { padding: 0 14px 14px; }
+
+/* Builder */
+.cls { border-top: 1px solid var(--line); padding-block: 6px 4px; }
+.cls-head { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 14px 2px; }
+.cls-head .sub { font-size: 12.5px; color: var(--ink-2); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "pick num lock" "slider slider slider"; align-items: center; column-gap: 8px; padding: 6px 14px 4px; }
+.row.off { opacity: 0.55; }
+.pick { grid-area: pick; display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; }
+.pick input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); flex: none; }
+.sw { width: 10px; height: 10px; border-radius: 2px; background: var(--c, var(--ink-3)); flex: none; }
+.nm { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.nm b { font-weight: 500; }
+.nm small { font-size: 11.5px; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flag { color: var(--warn-ink); background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 3px; padding: 0 4px; font-family: var(--font-body); font-size: 10.5px; margin-left: 4px; }
+.row input[type=range] { grid-area: slider; width: 100%; margin: 2px 0 0; height: 26px; accent-color: var(--accent); }
+.num { grid-area: num; display: inline-flex; align-items: center; gap: 2px; color: var(--ink-2); }
+.num input { width: 66px; text-align: right; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font-size: 13px; }
+.lock { grid-area: lock; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid transparent; border-radius: 4px; background: none; cursor: pointer; color: var(--ink-3); }
+.lock:hover { border-color: var(--line); }
+.lock[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+.lock svg { width: 15px; height: 15px; }
+.tag { font-size: 10.5px; color: var(--ink-3); border: 1px dashed var(--line); border-radius: 3px; padding: 0 4px; margin-left: 4px; font-family: var(--font-body); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 500; }
+.btn.primary:hover { filter: brightness(1.08); }
+.total { margin-left: auto; font-family: var(--font-mono); font-size: 13px; color: var(--ink-2); }
+.assume { border-top: 1px solid var(--line); padding: 10px 14px 14px; display: grid; gap: 8px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.field label { font-size: 13px; }
+.field label small { display: block; font-size: 11.5px; }
+.field .num { grid-area: auto; }
+.field .num input { width: 74px; }
+
+/* Chart */
+.chart-box { position: relative; height: 380px; margin-inline: 6px; }
+@media (max-width: 760px) { .chart-box { height: 300px; } }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 4px 14px 0; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lg-line { width: 18px; height: 2px; background: var(--ink-2); display: inline-block; }
+.lg-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); display: inline-block; }
+.lg-dia { width: 8px; height: 8px; background: var(--ink); transform: rotate(45deg); display: inline-block; }
+.lg-tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid var(--ink); display: inline-block; }
+.lg-asset { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); display: inline-block; }
+.pos { padding: 8px 14px 14px; font-size: 13px; color: var(--ink-2); max-width: 80ch; }
+.pos b { color: var(--ink); font-weight: 500; font-family: var(--font-mono); }
+.nochart { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-3); text-align: center; padding: 20px; }
+
+/* Recommendations */
+.recs { display: grid; gap: 12px; padding: 0 14px 14px; }
+@media (min-width: 640px) { .recs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.card { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--surface); }
+.card .why { font-size: 12.5px; color: var(--ink-2); }
+.kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.kv div { min-width: 0; }
+.kv .k { font-size: 11px; color: var(--ink-3); }
+.kv .v { font-family: var(--font-mono); font-size: 15px; font-weight: 500; }
+.kv .c { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+.wt { display: grid; gap: 3px; }
+.wt .r { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) 3.6em; gap: 8px; align-items: center; font-size: 12.5px; }
+.wt .r span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { height: 8px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 0 2px 2px 0; }
+.wt .r .p { text-align: right; font-family: var(--font-mono); }
+.note { font-size: 12px; color: var(--warn-ink); background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 4px; padding: 6px 8px; }
+.card .btn { align-self: flex-start; margin-top: auto; }
+.caveat { font-size: 12px; color: var(--ink-3); padding: 0 14px 14px; max-width: 90ch; }
+
+/* About the data */
+details.about { margin-block: 20px; }
+details.about > summary { cursor: pointer; list-style: none; padding: 12px 14px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+details.about > summary::-webkit-details-marker { display: none; }
+details.about > summary::before { content: "▸"; color: var(--ink-3); transition: transform .15s; display: inline-block; }
+details.about[open] > summary::before { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { details.about > summary::before { transition: none; } }
+.about .body { display: grid; gap: 18px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 20px; font-size: 13px; }
+.facts div span { display: block; font-size: 11.5px; color: var(--ink-3); }
+.warnbox { border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); border-radius: var(--radius); padding: 10px 12px; font-size: 13px; }
+.warnbox b { font-weight: 600; }
+ul.lims { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; max-width: 95ch; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; white-space: nowrap; }
+th { font-weight: 500; color: var(--ink-2); background: var(--surface-2); font-size: 11.5px; }
+td.n, th.n { text-align: right; }
+td.wrapc { white-space: normal; min-width: 220px; }
+tr:last-child td { border-bottom: none; }
+.edit { width: 64px; text-align: right; padding: 2px 4px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+.edit.changed { border-color: var(--accent); background: var(--accent-soft); }
+.heat td, .heat th { text-align: center; padding: 3px; }
+.heat th.rh { text-align: left; }
+.heat input { width: 52px; text-align: center; border: 1px solid transparent; background: transparent; color: var(--ink); font-family: var(--font-mono); font-size: 12px; padding: 3px 2px; border-radius: 3px; }
+.heat input:hover, .heat input:focus { border-color: var(--ink-3); }
+.heat input.changed { border-color: var(--accent); }
+.heat td.diag { color: var(--ink-3); font-family: var(--font-mono); font-size: 12px; }
+.checks { font-size: 12.5px; display: grid; gap: 3px; }
+.checks .ok { color: var(--good); } .checks .fail { color: var(--bad); } .checks .soft { color: var(--warn-ink); }
+.alert { border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); border-radius: 4px; padding: 8px 10px; font-size: 13px; }
+footer { padding-block: 10px 40px; color: var(--ink-3); font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
+#test-out { width: 100%; font-family: var(--font-mono); font-size: 12px; display: grid; gap: 2px; }
+#test-out .ok { color: var(--good); } #test-out .fail { color: var(--bad); }
+</style>
+
+<div class="wrap top">
+  <div>
+    <div class="eyebrow">Modern Portfolio Theory · EUR investor · <span id="ver">v0.1</span></div>
+    <h1>MPT Portfolio Simulator</h1>
+  </div>
+  <div class="meta" id="top-meta"></div>
+</div>
+
+<div class="band">
+  <div class="wrap">
+    <div class="tiles" role="group" aria-label="Portfolio metrics">
+      <div class="tile"><div class="k">Return (arith.)</div><div class="v" id="m-ret">–</div><div class="d" id="d-ret"></div></div>
+      <div class="tile"><div class="k">Geometric</div><div class="v" id="m-geo">–</div><div class="d" id="d-geo"></div></div>
+      <div class="tile"><div class="k">Real (geom.)</div><div class="v" id="m-real">–</div><div class="d" id="d-real"></div></div>
+      <div class="tile"><div class="k">Volatility</div><div class="v" id="m-vol">–</div><div class="d" id="d-vol"></div></div>
+      <div class="tile"><div class="k">Sharpe</div><div class="v" id="m-sharpe">–</div><div class="d" id="d-sharpe"></div></div>
+      <div class="tile"><div class="k">Income yield</div><div class="v" id="m-inc">–</div><div class="d" id="d-inc"></div></div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap grid">
+  <section class="panel" aria-labelledby="h-build">
+    <header><h2 id="h-build">Portfolio</h2><span class="muted" style="font-size:12px">Drag a slider; unlocked rows rescale to keep 100%.</span></header>
+    <div id="builder"></div>
+    <div class="toolbar">
+      <button class="btn" id="btn-equal" type="button">Equal weight</button>
+      <button class="btn" id="btn-reset" type="button">Reset</button>
+      <span class="total" id="total">Total 100.0%</span>
+    </div>
+    <div class="assume">
+      <div class="eyebrow">Assumptions</div>
+      <div class="field"><label for="in-rf">Risk-free rate <small id="rf-hint">Default: EUR cash mean over the window (D5)</small></label><span class="num"><input id="in-rf" type="number" step="0.01" inputmode="decimal">%</span></div>
+      <div class="field"><label for="in-infl">Inflation <small>Used only for the real-return tile (D8)</small></label><span class="num"><input id="in-infl" type="number" step="0.1" inputmode="decimal">%</span></div>
+      <div class="field"><label for="in-cap">Max weight per asset <small>Applies to frontier and recommendations (D6)</small></label><span class="num"><input id="in-cap" type="number" step="5" min="5" max="100" inputmode="decimal">%</span></div>
+    </div>
+  </section>
+
+  <div style="display:grid; gap:20px; min-width:0">
+    <section class="panel" aria-labelledby="h-front">
+      <header><h2 id="h-front">Efficient frontier</h2><span class="muted" style="font-size:12px">Click the frontier line to load that portfolio.</span></header>
+      <div class="chart-box"><canvas id="chart" aria-label="Efficient frontier: expected return against volatility" role="img"></canvas><div class="nochart" id="nochart" hidden>The chart library did not load (offline on first visit?). All numbers still update.</div></div>
+      <div class="legend" aria-hidden="true">
+        <span><i class="lg-line"></i>Efficient frontier</span>
+        <span><i class="lg-dot"></i>Your portfolio</span>
+        <span><i class="lg-dia"></i>Max-Sharpe</span>
+        <span><i class="lg-tri"></i>Min-vol</span>
+        <span><i class="lg-asset"></i>Single assets (labelled)</span>
+      </div>
+      <p class="pos" id="pos-text"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="h-rec">
+      <header><h2 id="h-rec">Recommendations</h2><span class="muted" style="font-size:12px" id="rec-scope"></span></header>
+      <div class="recs">
+        <article class="card" id="rec-ms"></article>
+        <article class="card" id="rec-mv"></article>
+      </div>
+      <p class="caveat" id="rec-caveat"></p>
+    </section>
+  </div>
+</main>
+
+<div class="wrap">
+  <details class="panel about" id="about">
+    <summary><h2>About the data</h2><span class="muted" style="font-size:12px" id="about-sum"></span></summary>
+    <div class="body panel-body" style="padding:0 14px 16px">
+      <div class="facts" id="facts"></div>
+      <div class="warnbox" id="gold-warn"></div>
+      <div>
+        <h3 style="margin-bottom:6px">Known limitations</h3>
+        <ul class="lims" id="lims"></ul>
+      </div>
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:6px">
+          <h3>Per-asset statistics</h3>
+          <button class="btn" id="btn-restore" type="button">Restore historical</button>
+        </div>
+        <p class="muted" style="margin:0 0 6px; font-size:12.5px">Expected return and volatility are editable (annualised, %). Edited cells are highlighted and feed straight into the frontier.</p>
+        <div class="scroll"><table id="stats-table"></table></div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:6px">Correlation of monthly EUR returns</h3>
+        <p class="muted" style="margin:0 0 6px; font-size:12.5px">Cells are editable; the mirror cell updates too. A matrix that is no longer positive semi-definite is repaired automatically.</p>
+        <div class="alert" id="psd-alert" hidden></div>
+        <div class="scroll" style="margin-top:6px"><table class="heat" id="corr-table"></table></div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:6px">Pipeline checks</h3>
+        <div class="checks" id="checks"></div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<footer class="wrap">
+  <span id="foot-build"></span>
+  <button class="btn" id="btn-tests" type="button">Run self-tests</button>
+  <div id="test-out"></div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+"use strict";
+// ===== DATA =====
+// Embedded at build time from ladastary/mpt-data/data/latest.json by site/build_page.py. Do not edit by hand.
+const DATA = /*__DATA_START__*/null/*__DATA_END__*/;
+const PAGE_BUILT = "__PAGE_BUILT__";
+// ===== END DATA =====
+
+// ===== MATH =====
+// Pure functions only: no DOM access. Tested by runSelfTests() and by site/test_page.mjs.
+const M = (() => {
+  const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+  const matVec = (A, x) => A.map(r => dot(r, x));
+  const sum = a => a.reduce((s, x) => s + x, 0);
+
+  function covariance(vols, C) {
+    const n = vols.length, S = [];
+    for (let i = 0; i < n; i++) { S.push(new Array(n)); for (let j = 0; j < n; j++) S[i][j] = vols[i] * vols[j] * C[i][j]; }
+    return S;
+  }
+
+  function stats(w, mu, S, rf) {
+    const ret = dot(w, mu);
+    const v = Math.max(dot(w, matVec(S, w)), 0);
+    const vol = Math.sqrt(v);
+    return { ret, vol, geo: ret - v / 2, sharpe: vol > 0 ? (ret - rf) / vol : NaN };
+  }
+
+  // Euclidean projection onto { sum w = 1, lo <= w <= hi }: w_i = clip(v_i - lambda, lo_i, hi_i).
+  // f(lambda) = sum w_i is piecewise linear and decreasing, so search the sorted breakpoints, then solve exactly.
+  function project(v, lo, hi) {
+    const n = v.length;
+    const f = l => { let s = 0; for (let i = 0; i < n; i++) s += Math.min(hi[i], Math.max(lo[i], v[i] - l)); return s; };
+    const bp = new Float64Array(2 * n);
+    for (let i = 0; i < n; i++) { bp[2 * i] = v[i] - hi[i]; bp[2 * i + 1] = v[i] - lo[i]; }
+    bp.sort();
+    let a = 0, b = bp.length - 1;               // f(bp[0]) = sum hi >= 1 >= sum lo = f(bp[last])
+    while (b - a > 1) { const m = (a + b) >> 1; if (f(bp[m]) >= 1) a = m; else b = m; }
+    const fa = f(bp[a]), fb = f(bp[b]);
+    const l = fa === fb ? bp[a] : bp[a] + (fa - 1) * (bp[b] - bp[a]) / (fa - fb);
+    const w = v.map((x, i) => Math.min(hi[i], Math.max(lo[i], x - l)));
+    for (let pass = 0; pass < 4; pass++) {
+      const r = 1 - sum(w);
+      if (r === 0) break;
+      const free = [];
+      for (let i = 0; i < n; i++) if (r > 0 ? w[i] < hi[i] : w[i] > lo[i]) free.push(i);
+      if (!free.length) break;
+      for (const i of free) w[i] = Math.min(hi[i], Math.max(lo[i], w[i] + r / free.length));
+    }
+    return w;
+  }
+
+  function maxEig(S) {
+    const n = S.length; let x = new Array(n).fill(1 / Math.sqrt(n)), lam = 0;
+    for (let k = 0; k < 200; k++) {
+      const y = matVec(S, x); const nrm = Math.sqrt(dot(y, y));
+      if (nrm === 0) return 0;
+      const nl = dot(x, y); x = y.map(v => v / nrm);
+      if (Math.abs(nl - lam) < 1e-14 * Math.max(1, Math.abs(nl))) { lam = nl; break; }
+      lam = nl;
+    }
+    return lam;
+  }
+
+  // min w'Sw - gamma*w'mu over the bounded simplex. Accelerated projected gradient (FISTA) with restart.
+  function solveMV(mu, S, lo, hi, gamma, w0, L) {
+    const n = mu.length;
+    const Lc = Math.max(L || 2 * maxEig(S) * 1.01, 1e-12);
+    const obj = w => dot(w, matVec(S, w)) - gamma * dot(w, mu);
+    let x = project(w0 ? w0.slice() : new Array(n).fill(1 / n), lo, hi), y = x.slice(), t = 1, fx = obj(x), it = 0;
+    for (; it < 5000; it++) {
+      const Sy = matVec(S, y);
+      const xn = project(y.map((yi, i) => yi - (2 * Sy[i] - gamma * mu[i]) / Lc), lo, hi);
+      const fn = obj(xn);
+      let d = 0; for (let i = 0; i < n; i++) d = Math.max(d, Math.abs(xn[i] - x[i]));
+      if (fn > fx + 1e-18) { t = 1; y = x.slice(); if (d < 1e-7) break; continue; }
+      const tn = (1 + Math.sqrt(1 + 4 * t * t)) / 2, beta = (t - 1) / tn;
+      y = xn.map((v, i) => v + beta * (v - x[i]));
+      x = xn; fx = fn; t = tn;
+      if (d < 1e-7) break;
+    }
+    return { w: x, iters: it };
+  }
+
+  // Frontier: gamma = 0 plus 59 log-spaced values 1e-4 ... 1e2, warm-started, deduped, sorted by vol.
+  function frontier(mu, S, lo, hi) {
+    const L = 2 * maxEig(S) * 1.01;
+    const gammas = [0]; for (let k = 0; k <= 58; k++) gammas.push(1e-4 * Math.pow(1e6, k / 58));
+    let w = null; const raw = [];
+    for (const g of gammas) {
+      const r = solveMV(mu, S, lo, hi, g, w, L); w = r.w;
+      const st = stats(w, mu, S, 0);
+      raw.push({ w: w.slice(), ret: st.ret, vol: st.vol, gamma: g });
+    }
+    raw.sort((a, b) => a.vol - b.vol);
+    const pts = [];
+    for (const p of raw) {
+      const last = pts[pts.length - 1];
+      if (last && Math.abs(p.vol - last.vol) < 1e-5 && Math.abs(p.ret - last.ret) < 1e-5) continue;
+      if (last && p.ret < last.ret - 1e-9) continue;
+      pts.push(p);
+    }
+    return pts;
+  }
+
+  // Max-Sharpe: best frontier point, then projected gradient ascent on the Sharpe ratio with backtracking.
+  function maxSharpe(mu, S, lo, hi, rf, pts) {
+    const sh = w => { const s = stats(w, mu, S, rf); return s.vol > 0 ? s.sharpe : -Infinity; };
+    let best = pts[0];
+    for (const p of pts) if (sh(p.w) > sh(best.w)) best = p;
+    let w = best.w.slice(), s = sh(w), a = 1;
+    for (let it = 0; it < 3000; it++) {
+      const Sw = matVec(S, w), v = dot(w, Sw), sd = Math.sqrt(v);
+      if (!(sd > 0)) break;
+      const ex = dot(w, mu) - rf;
+      const g = mu.map((m, i) => m / sd - ex * Sw[i] / (sd * sd * sd));
+      let moved = -1;
+      while (a > 1e-14) {
+        const wn = project(w.map((x, i) => x + a * g[i]), lo, hi), sn = sh(wn);
+        if (sn > s + 1e-15) { moved = 0; for (let i = 0; i < w.length; i++) moved = Math.max(moved, Math.abs(wn[i] - w[i])); w = wn; s = sn; a *= 2; break; }
+        a /= 2;
+      }
+      if (moved < 0 || moved < 1e-10) break;
+    }
+    return { w, ...stats(w, mu, S, rf) };
+  }
+
+  // Frontier lookups for "where does my portfolio sit".
+  function retAtVol(pts, vol) {
+    if (!pts.length || vol < pts[0].vol - 1e-12 || vol > pts[pts.length - 1].vol + 1e-12) return null;
+    for (let i = 1; i < pts.length; i++) if (vol <= pts[i].vol) {
+      const a = pts[i - 1], b = pts[i], t = b.vol === a.vol ? 1 : (vol - a.vol) / (b.vol - a.vol);
+      return a.ret + t * (b.ret - a.ret);
+    }
+    return pts[pts.length - 1].ret;
+  }
+  function volAtRet(pts, ret) {
+    if (!pts.length || ret > pts[pts.length - 1].ret + 1e-12) return null;
+    if (ret <= pts[0].ret) return pts[0].vol;
+    for (let i = 1; i < pts.length; i++) if (ret <= pts[i].ret) {
+      const a = pts[i - 1], b = pts[i], t = b.ret === a.ret ? 1 : (ret - a.ret) / (b.ret - a.ret);
+      return a.vol + t * (b.vol - a.vol);
+    }
+    return pts[pts.length - 1].vol;
+  }
+
+  // Cyclic Jacobi eigen-decomposition for symmetric matrices (fine for n <= 40).
+  function jacobi(A0) {
+    const n = A0.length, A = A0.map(r => r.slice());
+    const V = A.map((r, i) => r.map((_, j) => (i === j ? 1 : 0)));
+    for (let sweep = 0; sweep < 100; sweep++) {
+      let off = 0;
+      for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) off += A[p][q] * A[p][q];
+      if (off < 1e-24) break;
+      for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) {
+        if (Math.abs(A[p][q]) < 1e-300) continue;
+        const th = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+        const t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th * th + 1));
+        const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+        for (let k = 0; k < n; k++) { const kp = A[k][p], kq = A[k][q]; A[k][p] = c * kp - s * kq; A[k][q] = s * kp + c * kq; }
+        for (let k = 0; k < n; k++) { const pk = A[p][k], qk = A[q][k]; A[p][k] = c * pk - s * qk; A[q][k] = s * pk + c * qk; }
+        for (let k = 0; k < n; k++) { const kp = V[k][p], kq = V[k][q]; V[k][p] = c * kp - s * kq; V[k][q] = s * kp + c * kq; }
+      }
+    }
+    return { values: A.map((r, i) => r[i]), vectors: V };
+  }
+
+  // PSD repair: clip eigenvalues at 1e-8, rebuild, rescale to unit diagonal.
+  function psdRepair(C) {
+    const n = C.length, { values, vectors: V } = jacobi(C);
+    const minEig = Math.min(...values);
+    if (minEig >= -1e-10) return { C: C.map(r => r.slice()), repaired: false, minEig };
+    const lam = values.map(v => Math.max(v, 1e-8));
+    const B = [];
+    for (let i = 0; i < n; i++) { B.push(new Array(n)); for (let j = 0; j < n; j++) { let s = 0; for (let k = 0; k < n; k++) s += V[i][k] * lam[k] * V[j][k]; B[i][j] = s; } }
+    const d = B.map((r, i) => Math.sqrt(r[i]));
+    const R = B.map((r, i) => r.map((x, j) => (i === j ? 1 : x / (d[i] * d[j]))));
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const m = (R[i][j] + R[j][i]) / 2; R[i][j] = m; R[j][i] = m; }
+    let maxChange = 0, at = [0, 0];
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const ch = Math.abs(R[i][j] - C[i][j]); if (ch > maxChange) { maxChange = ch; at = [i, j]; } }
+    return { C: R, repaired: true, minEig, maxChange, at };
+  }
+
+  // Annualisation used by the pipeline: mean x 12, sample stdev x sqrt(12), Pearson correlation.
+  function annualise(r) {
+    const n = r.length, m = sum(r) / n;
+    let ss = 0; for (const x of r) ss += (x - m) * (x - m);
+    return { mu: m * 12, vol: Math.sqrt(ss / (n - 1)) * Math.sqrt(12) };
+  }
+  function corr(x, y) {
+    const n = x.length, mx = sum(x) / n, my = sum(y) / n;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < n; i++) { const a = x[i] - mx, b = y[i] - my; sxy += a * b; sxx += a * a; syy += b * b; }
+    return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : 0;
+  }
+
+  return { dot, matVec, sum, covariance, stats, project, maxEig, solveMV, frontier, maxSharpe, retAtVol, volAtRet, jacobi, psdRepair, annualise, corr };
+})();
+// ===== END MATH =====
+
+// ===== STATE =====
+const ASSETS = DATA.assets, N = ASSETS.length;
+const IDX = Object.fromEntries(ASSETS.map((a, i) => [a.id, i]));
+const SELECTABLE = ASSETS.map(a => !!a.defaultOn); // v0.1: default universe; optional assets arrive in v0.2
+const CASH_IDX = IDX.CASH_EUR;
+const HIST = {
+  mu: ASSETS.map(a => a.expRet),
+  vol: ASSETS.map(a => a.vol),
+  // Correlation re-ordered to ASSETS order (identical today; safe if the pipeline ever reorders).
+  C: ASSETS.map(a => ASSETS.map(b => DATA.correlation.matrix[DATA.correlation.order.indexOf(a.id)][DATA.correlation.order.indexOf(b.id)]))
+};
+
+const STATE = {
+  incl: SELECTABLE.slice(),
+  w: new Array(N).fill(0),
+  lock: new Array(N).fill(false),
+  muRaw: HIST.mu.slice(),
+  vol: HIST.vol.slice(),
+  C: HIST.C.map(r => r.slice()),
+  rf: CASH_IDX != null ? HIST.mu[CASH_IDX] : 0,
+  infl: 0.02,
+  cap: 1
+};
+const muEff = i => STATE.muRaw[i] - (ASSETS[i].ter || 0);
+function equalWeights() {
+  const free = [], lockedSum = STATE.w.reduce((s, w, i) => s + (STATE.incl[i] && STATE.lock[i] ? w : 0), 0);
+  for (let i = 0; i < N; i++) if (STATE.incl[i] && !STATE.lock[i]) free.push(i);
+  if (!free.length) return;
+  const each = Math.max(0, 1 - lockedSum) / free.length;
+  for (const i of free) STATE.w[i] = each;
+}
+function resetState() {
+  STATE.incl = SELECTABLE.slice(); STATE.lock.fill(false); STATE.w.fill(0); equalWeights();
+}
+// Move one weight; unlocked included others rescale proportionally so the total stays 100%.
+function setWeight(i, v) {
+  if (!STATE.incl[i]) return;
+  const others = [], lockedSum = STATE.w.reduce((s, w, j) => s + (j !== i && STATE.incl[j] && STATE.lock[j] ? w : 0), 0);
+  for (let j = 0; j < N; j++) if (j !== i && STATE.incl[j] && !STATE.lock[j]) others.push(j);
+  if (!others.length) { STATE.w[i] = Math.max(0, 1 - lockedSum); return; }
+  v = Math.min(Math.max(v, 0), Math.max(0, 1 - lockedSum));
+  const rest = Math.max(0, 1 - lockedSum - v), cur = others.reduce((s, j) => s + STATE.w[j], 0);
+  STATE.w[i] = v;
+  for (const j of others) STATE.w[j] = cur > 1e-12 ? STATE.w[j] * rest / cur : rest / others.length;
+}
+function toggleInclude(i, on) {
+  if (!SELECTABLE[i]) return;
+  if (on) { STATE.incl[i] = true; STATE.w[i] = 0; return; }
+  const freed = STATE.w[i];
+  STATE.incl[i] = false; STATE.w[i] = 0; STATE.lock[i] = false;
+  const others = []; for (let j = 0; j < N; j++) if (STATE.incl[j] && !STATE.lock[j]) others.push(j);
+  const pool = others.length ? others : STATE.incl.map((v, j) => (v ? j : -1)).filter(j => j >= 0);
+  const cur = pool.reduce((s, j) => s + STATE.w[j], 0);
+  for (const j of pool) STATE.w[j] += cur > 1e-12 ? freed * STATE.w[j] / cur : freed / pool.length;
+}
+
+// Hash: "#p" + basis points per asset in DATA order, "x" = excluded. Only letters/digits/-/. survive artifact links.
+function encodeHash() { return "p" + ASSETS.map((a, i) => (STATE.incl[i] ? Math.round(STATE.w[i] * 10000) : "x")).join("-"); }
+function decodeHash(h) {
+  const m = /^#?p([0-9x-]+)$/.exec(h || ""); if (!m) return false;
+  const parts = m[1].split("-"); if (parts.length !== N) return false;
+  const incl = parts.map((p, i) => p !== "x" && SELECTABLE[i]);
+  const w = parts.map((p, i) => (incl[i] ? Number(p) / 10000 : 0));
+  const s = w.reduce((a, b) => a + b, 0);
+  if (!incl.some(Boolean) || !(s > 0.5)) return false;
+  STATE.incl = incl; STATE.w = w.map(x => x / s); return true;
+}
+
+// Model cache: frontier + recommendations recompute only when inputs that drive them change.
+let MODEL = null;
+function modelKey() { return JSON.stringify([STATE.incl, STATE.muRaw, STATE.vol, STATE.C, STATE.rf, STATE.cap]); }
+function buildModel() {
+  const key = modelKey(); if (MODEL && MODEL.key === key) return MODEL;
+  const t0 = performance.now();
+  const sub = []; for (let i = 0; i < N; i++) if (STATE.incl[i]) sub.push(i);
+  const n = sub.length;
+  const mu = sub.map(muEff), S = M.covariance(sub.map(i => STATE.vol[i]), sub.map(i => sub.map(j => STATE.C[i][j])));
+  const capEff = Math.max(STATE.cap, n ? 1 / n : 1);
+  const lo = new Array(n).fill(0), hi = new Array(n).fill(Math.min(1, capEff));
+  const pts = n ? M.frontier(mu, S, lo, hi) : [];
+  pts.forEach(p => { p.sharpe = p.vol > 0 ? (p.ret - STATE.rf) / p.vol : NaN; });
+  const ms = n ? M.maxSharpe(mu, S, lo, hi, STATE.rf, pts) : null;
+  const mv = pts[0] ? { w: pts[0].w, ...M.stats(pts[0].w, mu, S, STATE.rf) } : null;
+  const full = w => { const f = new Array(N).fill(0); sub.forEach((i, k) => { f[i] = w[k]; }); return f; };
+  MODEL = { key, sub, mu, S, pts, ms: ms && { ...ms, wf: full(ms.w) }, mv: mv && { ...mv, wf: full(mv.w) }, full, capEff, capRaised: capEff > STATE.cap + 1e-12, ms_time: performance.now() - t0 };
+  return MODEL;
+}
+function currentStats() {
+  const m = buildModel();
+  const w = m.sub.map(i => STATE.w[i]);
+  const s = M.stats(w, m.mu, m.S, STATE.rf);
+  const inc = m.sub.every(i => ASSETS[i].income != null) && m.sub.length ? m.sub.reduce((t, i, k) => t + w[k] * ASSETS[i].income, 0) : null;
+  return { ...s, real: (1 + s.geo) / (1 + STATE.infl) - 1, income: inc };
+}
+// ===== END STATE =====
+
+// ===== UI =====
+const $ = id => document.getElementById(id);
+const SLOT = { EQ_US: 1, EQ_EU: 2, EQ_EM: 3, GOLD: 4, BD_US10: 5, BD_DE10: 6, BD_CZ10: 7, CASH_EUR: 8 };
+const SHORT = { EQ_US: "US eq.", EQ_EU: "Europe eq.", EQ_EM: "EM eq.", EQ_WLD: "World eq.", EQ_DE: "Germany eq.", GOLD: "Gold", BD_US10: "UST 10Y", BD_DE10: "Bund 10Y", BD_CZ10: "CZ 10Y", CASH_EUR: "EUR cash" };
+const colorVar = id => (SLOT[id] ? `var(--s${SLOT[id]})` : "var(--ink-3)");
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const pct = (x, d = 1) => (x == null || !isFinite(x) ? "–" : (x * 100).toFixed(d) + "%");
+const pp = (x, d = 1) => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(d) + "pp";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const ym = s => { const [y, m] = s.split("-").map(Number); return MON[m - 1] + " " + y; };
+const plainName = a => a.name.replace(/\s*\(.*\)\s*$/, "");
+const indexName = a => (/\((.*)\)/.exec(a.name) || [, ""])[1];
+const LOCK_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path class="shackle" d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>';
+const UNLOCK_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 4.9-.6"/></svg>';
+
+function buildBuilder() {
+  const host = $("builder"); let html = "";
+  for (const c of DATA.classes) {
+    const rows = ASSETS.map((a, i) => [a, i]).filter(([a]) => a.class === c.id);
+    if (!rows.length) continue;
+    html += `<div class="cls"><div class="cls-head"><span class="eyebrow">${esc(c.name)}</span><span class="sub mono" id="sub-${c.id}"></span></div>`;
+    for (const [a, i] of rows) {
+      const sel = SELECTABLE[i];
+      const flag = a.id === "GOLD" ? '<span class="flag" title="Monthly-average prices understate gold volatility by roughly 15–20% (D12)">σ understated</span>' : "";
+      const tag = sel ? "" : '<span class="tag">optional · v0.2</span>';
+      html += `<div class="row" id="row-${a.id}">
+        <label class="pick" for="inc-${a.id}"><input type="checkbox" id="inc-${a.id}" ${sel ? "" : "disabled"}><span class="sw" style="--c:${colorVar(a.id)}"></span>
+          <span class="nm"><b>${esc(plainName(a))}${tag}</b><small>μ <span id="mu-${a.id}"></span> · σ <span id="vol-${a.id}"></span>${flag} · ${esc(indexName(a) || a.proxy)}</small></span></label>
+        <span class="num"><input type="number" id="nb-${a.id}" min="0" max="100" step="0.1" inputmode="decimal" aria-label="${esc(plainName(a))} weight in percent">%</span>
+        <button type="button" class="lock" id="lk-${a.id}" aria-pressed="false" aria-label="Lock ${esc(plainName(a))} weight" ${sel ? "" : "disabled"}>${UNLOCK_SVG}</button>
+        <input type="range" id="sl-${a.id}" min="0" max="100" step="0.1" aria-label="${esc(plainName(a))} weight" ${sel ? "" : "disabled"}>
+      </div>`;
+    }
+    html += "</div>";
+  }
+  host.innerHTML = html;
+}
+
+function syncBuilder() {
+  ASSETS.forEach((a, i) => {
+    const on = STATE.incl[i], lk = STATE.lock[i];
+    $("inc-" + a.id).checked = on;
+    $("row-" + a.id).classList.toggle("off", !on);
+    const sl = $("sl-" + a.id), nb = $("nb-" + a.id), b = $("lk-" + a.id);
+    sl.value = (STATE.w[i] * 100).toFixed(1);
+    sl.disabled = !on || lk;
+    if (document.activeElement !== nb) nb.value = (STATE.w[i] * 100).toFixed(1);
+    nb.disabled = !on || lk;
+    b.disabled = !on; b.setAttribute("aria-pressed", String(lk)); b.innerHTML = lk ? LOCK_SVG : UNLOCK_SVG;
+    $("mu-" + a.id).textContent = pct(muEff(i));
+    $("vol-" + a.id).textContent = pct(STATE.vol[i]);
+  });
+  for (const c of DATA.classes) {
+    const el = $("sub-" + c.id); if (!el) continue;
+    el.textContent = pct(ASSETS.reduce((s, a, i) => s + (a.class === c.id ? STATE.w[i] : 0), 0));
+  }
+  const tot = STATE.w.reduce((s, x) => s + x, 0);
+  $("total").textContent = "Total " + pct(tot);
+}
+
+// Metrics band with change vs the state before the current interaction.
+let lastMetrics = null, prevMetrics = null, lastRenderAt = -1e9;
+function renderMetrics() {
+  const s = currentStats(), now = performance.now();
+  if (now - lastRenderAt > 700) prevMetrics = lastMetrics;
+  lastRenderAt = now; lastMetrics = s;
+  const set = (k, v) => { $("m-" + k).textContent = v; };
+  set("ret", pct(s.ret, 2)); set("geo", pct(s.geo, 2)); set("real", pct(s.real, 2)); set("vol", pct(s.vol, 2));
+  set("sharpe", isFinite(s.sharpe) ? s.sharpe.toFixed(2) : "–"); set("inc", s.income == null ? "n/a" : pct(s.income, 2));
+  const delta = (k, val, prevVal, higherIsBetter, fmt) => {
+    const el = $("d-" + k);
+    if (prevVal == null || !isFinite(val) || !isFinite(prevVal)) { el.textContent = k === "real" ? `after ${pct(STATE.infl)} infl.` : k === "sharpe" ? `r_f ${pct(STATE.rf, 2)}` : ""; return; }
+    const d = val - prevVal;
+    if (Math.abs(d) < 5e-5) { el.innerHTML = "no change"; return; }
+    const good = (d > 0) === higherIsBetter;
+    el.innerHTML = `<span class="${good ? "good" : "bad"}">${d > 0 ? "▲" : "▼"} ${fmt(d)}</span>`;
+  };
+  const p = prevMetrics;
+  delta("ret", s.ret, p && p.ret, true, d => pp(d, 2).replace(/^[+−]/, ""));
+  delta("geo", s.geo, p && p.geo, true, d => pp(d, 2).replace(/^[+−]/, ""));
+  delta("real", s.real, p && p.real, true, d => pp(d, 2).replace(/^[+−]/, ""));
+  delta("vol", s.vol, p && p.vol, false, d => pp(d, 2).replace(/^[+−]/, ""));
+  delta("sharpe", s.sharpe, p && p.sharpe, true, d => Math.abs(d).toFixed(2));
+  $("d-inc").textContent = s.income == null ? "no automated source yet (D7)" : "";
+  return s;
+}
+
+// Chart
+let chart = null;
+const labelPlugin = {
+  id: "pointLabels",
+  afterDatasetsDraw(c) {
+    const ctx = c.ctx, area = c.chartArea;
+    c.data.datasets.forEach((ds, di) => {
+      if (!ds.pointLabels) return;
+      const meta = c.getDatasetMeta(di); if (meta.hidden) return;
+      meta.data.forEach((pt, j) => {
+        const t = ds.pointLabels[j]; if (!t) return;
+        ctx.save();
+        ctx.font = (ds.labelWeight || "500") + " 11.5px " + css("--font-body");
+        ctx.fillStyle = ds.labelColor || css("--ink-2");
+        const w = ctx.measureText(t).width;
+        let dx = ds.labelDx != null ? ds.labelDx : 8, dy = ds.labelDy || 0, align = ds.labelAlign || "left";
+        if (align === "left" && pt.x + dx + w > area.right) { align = "right"; dx = -Math.abs(dx); }
+        if (align === "right" && pt.x + dx - w < area.left) { align = "left"; dx = Math.abs(dx); }
+        ctx.textAlign = align; ctx.textBaseline = "middle";
+        ctx.fillText(t, pt.x + dx, Math.min(area.bottom - 6, Math.max(area.top + 6, pt.y + dy)));
+        ctx.restore();
+      });
+    });
+  }
+};
+function chartColors() {
+  return { ink: css("--ink"), ink2: css("--ink-2"), ink3: css("--ink-3"), line: css("--line"), surface: css("--surface"), accent: css("--accent"),
+    series: id => (SLOT[id] ? css("--s" + SLOT[id]) : css("--ink-3")) };
+}
+function renderChart(m, s) {
+  if (typeof Chart === "undefined") { $("nochart").hidden = false; return; }
+  const col = chartColors();
+  const assetIdx = m.sub;
+  const assetPts = assetIdx.map(i => ({ x: STATE.vol[i], y: muEff(i) }));
+  const allX = m.pts.map(p => p.vol).concat(assetPts.map(p => p.x), [s.vol]);
+  const allY = m.pts.map(p => p.ret).concat(assetPts.map(p => p.y), [s.ret]);
+  const xmax = Math.ceil((Math.max(...allX) + 0.012) * 50) / 50;
+  const ymax = Math.ceil((Math.max(...allY) + 0.008) * 100) / 100;
+  const ymin = Math.min(0, Math.floor((Math.min(...allY) - 0.005) * 100) / 100);
+  const ds = [
+    { label: "Efficient frontier", data: m.pts.map(p => ({ x: p.vol, y: p.ret })), showLine: true, borderColor: col.ink2, backgroundColor: col.ink2, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 10, order: 4, kind: "frontier" },
+    { label: "Assets", data: assetPts, pointBackgroundColor: assetIdx.map(i => col.series(ASSETS[i].id)), pointBorderColor: col.surface, pointBorderWidth: 2, pointRadius: 6, pointHoverRadius: 7, pointHitRadius: 8,
+      pointLabels: assetIdx.map(i => SHORT[ASSETS[i].id] || plainName(ASSETS[i])), names: assetIdx.map(i => plainName(ASSETS[i])), labelColor: col.ink2, labelWeight: "400", order: 3, kind: "asset" },
+    { label: "Min-vol", data: m.mv ? [{ x: m.mv.vol, y: m.mv.ret }] : [], pointStyle: "triangle", pointRadius: 8, pointHoverRadius: 9, backgroundColor: col.ink, borderColor: col.surface, borderWidth: 1.5, pointLabels: ["Min-vol"], labelColor: col.ink, labelDx: 10, labelDy: 14, order: 2, kind: "mv" },
+    { label: "Max-Sharpe", data: m.ms ? [{ x: m.ms.vol, y: m.ms.ret }] : [], pointStyle: "rectRot", pointRadius: 8, pointHoverRadius: 9, backgroundColor: col.ink, borderColor: col.surface, borderWidth: 1.5, pointLabels: ["Max-Sharpe"], labelColor: col.ink, labelAlign: "right", labelDx: -12, labelDy: -10, order: 1, kind: "ms" },
+    { label: "Your portfolio", data: [{ x: s.vol, y: s.ret }], pointRadius: 8, pointHoverRadius: 9, backgroundColor: col.accent, borderColor: col.surface, borderWidth: 3, pointLabels: ["You"], labelColor: col.accent, labelWeight: "600", labelDx: 12, labelDy: -2, order: 0, kind: "you" }
+  ];
+  const tick = v => (v * 100).toFixed(0) + "%";
+  if (!chart) {
+    Chart.defaults.font.family = css("--font-body");
+    Chart.defaults.font.size = 12;
+    chart = new Chart($("chart"), {
+      type: "scatter",
+      data: { datasets: ds },
+      plugins: [labelPlugin],
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 8, right: 12, left: 0, bottom: 0 } },
+        interaction: { mode: "nearest", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: () => "",
+              label: c => {
+                const d = c.dataset, x = c.parsed.x, y = c.parsed.y;
+                const nm = d.names ? d.names[c.dataIndex] : d.label;
+                const sh = x > 0 ? ` · Sharpe ${((y - STATE.rf) / x).toFixed(2)}` : "";
+                return `${nm}: return ${pct(y)}, vol ${pct(x)}${sh}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { type: "linear", title: { display: true, text: "Volatility (annualised)" }, ticks: { callback: tick, stepSize: 0.02 } },
+          y: { type: "linear", title: { display: true, text: "Expected return (arith., p.a.)" }, ticks: { callback: tick, stepSize: 0.02 } }
+        },
+        onClick: (evt, _els, c) => onChartClick(evt, c)
+      }
+    });
+  } else {
+    chart.data.datasets = ds;
+  }
+  const o = chart.options.scales;
+  o.x.min = 0; o.x.max = xmax; o.y.min = ymin; o.y.max = ymax;
+  for (const ax of [o.x, o.y]) { ax.grid = { color: col.line }; ax.border = { color: col.line }; ax.ticks.color = col.ink2; ax.title.color = col.ink2; }
+  chart.update("none");
+}
+function onChartClick(evt, c) {
+  const m = buildModel(); if (!m.pts.length) return;
+  const xs = c.scales.x, ys = c.scales.y;
+  let best = -1, bd = Infinity;
+  m.pts.forEach((p, k) => { const dx = xs.getPixelForValue(p.vol) - evt.x, dy = ys.getPixelForValue(p.ret) - evt.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = k; } });
+  if (best < 0 || bd > 30 * 30) return;
+  applyWeights(m.full(m.pts[best].w));
+}
+
+function renderPosition(m, s) {
+  const el = $("pos-text");
+  if (!m.pts.length) { el.textContent = "Select at least one asset."; return; }
+  const r = M.retAtVol(m.pts, s.vol), v = M.volAtRet(m.pts, s.ret);
+  const parts = [`Your portfolio: return <b>${pct(s.ret, 2)}</b> at volatility <b>${pct(s.vol, 2)}</b>.`];
+  if (r != null) {
+    const gap = r - s.ret;
+    parts.push(gap < 5e-5 ? "It sits on the frontier." : `At the same volatility the frontier earns <b>${pct(r, 2)}</b> (${pp(gap, 2)}).`);
+  } else parts.push("Its volatility is above the frontier's range within the current caps.");
+  if (v != null && r != null && r - s.ret >= 5e-5) parts.push(`The same return is available at volatility <b>${pct(v, 2)}</b> (${pp(v - s.vol, 2)}).`);
+  el.innerHTML = parts.join(" ");
+}
+
+function cardHTML(kind, rec, s) {
+  if (!rec) return "<p class='muted'>Select at least one asset.</p>";
+  const m = buildModel();
+  const rows = m.sub.map((i, k) => [i, rec.w[k]]).filter(([, w]) => w >= 0.0005).sort((a, b) => b[1] - a[1]);
+  const top = rows.slice(0, 2).map(([i, w]) => `${plainName(ASSETS[i])} ${pct(w, 0)}`).join(" and ");
+  const title = kind === "ms" ? "Max-Sharpe" : "Min-volatility";
+  const why = kind === "ms"
+    ? `Highest return per unit of volatility above the ${pct(STATE.rf, 2)} risk-free rate. Mostly ${top}.`
+    : `Lowest volatility attainable with the selected assets and caps. Mostly ${top}.`;
+  const cmp = (a, b, d = 2) => `vs yours ${pp(a - b, d)}`;
+  let notes = "";
+  const gi = IDX.GOLD;
+  if (gi != null && rec.wf[gi] > 0.2) notes += `<div class="note">Gold at ${pct(rec.wf[gi], 0)} leans on understated gold volatility (monthly-average prices, ~15–20% too low). Consider a lower cap.</div>`;
+  if (kind === "mv" && CASH_IDX != null && rec.wf[CASH_IDX] > 0.5) notes += `<div class="note">EUR cash barely moves (σ ${pct(STATE.vol[CASH_IDX], 2)}), so min-vol is mostly cash. Untick cash to see the lowest-risk invested mix.</div>`;
+  return `<div><h3>${title}</h3><div class="why">${esc(why)}</div></div>
+    <div class="kv">
+      <div><div class="k">Return</div><div class="v">${pct(rec.ret, 2)}</div><div class="c">${cmp(rec.ret, s.ret)}</div></div>
+      <div><div class="k">Volatility</div><div class="v">${pct(rec.vol, 2)}</div><div class="c">${cmp(rec.vol, s.vol)}</div></div>
+      <div><div class="k">Sharpe</div><div class="v">${isFinite(rec.sharpe) ? rec.sharpe.toFixed(2) : "–"}</div><div class="c">vs yours ${isFinite(s.sharpe) ? (rec.sharpe - s.sharpe >= 0 ? "+" : "−") + Math.abs(rec.sharpe - s.sharpe).toFixed(2) : "–"}</div></div>
+    </div>
+    <div class="wt">${rows.map(([i, w]) => `<div class="r"><span>${esc(SHORT[ASSETS[i].id] || plainName(ASSETS[i]))}</span><span class="bar"><i style="width:${(w * 100).toFixed(1)}%; background:${colorVar(ASSETS[i].id)}"></i></span><span class="p">${pct(w, 1)}</span></div>`).join("")}</div>
+    ${notes}
+    <button type="button" class="btn primary" data-apply="${kind}">Apply these weights</button>`;
+}
+function renderRecs(m, s) {
+  $("rec-ms").innerHTML = cardHTML("ms", m.ms, s);
+  $("rec-mv").innerHTML = cardHTML("mv", m.mv, s);
+  const n = m.sub.length;
+  $("rec-scope").textContent = `${n} asset${n === 1 ? "" : "s"} · long-only · cap ${pct(m.capEff, 0)} per asset`;
+  $("rec-caveat").textContent = (m.capRaised ? `Cap raised to ${pct(m.capEff, 1)} so ${n} assets can sum to 100%. ` : "")
+    + "Expected returns are 25-year historical means; at 16% volatility the standard error of a 25-year mean is about 3.2pp a year, so the optimizer over-weights whatever won in this window. Treat weights as indicative and use the cap to temper them.";
+}
+
+function applyWeights(wf) {
+  STATE.lock.fill(false);
+  STATE.w = wf.map((w, i) => (STATE.incl[i] ? w : 0));
+  syncBuilder(); schedule();
+}
+
+// About the data
+function buildAbout() {
+  const st = DATA.settings, hard = DATA.checks.filter(c => c.hard), soft = DATA.checks.filter(c => !c.hard);
+  const hardOk = hard.filter(c => c.ok).length, softWarn = soft.filter(c => !c.ok);
+  $("about-sum").textContent = `${ym(st.window.start)} – ${ym(st.window.end)} · ${st.window.months} months · ${hardOk}/${hard.length} hard checks passed`;
+  $("facts").innerHTML = [
+    ["Window", `${ym(st.window.start)} – ${ym(st.window.end)} (${st.window.months} complete months)`],
+    ["Currency and returns", `${st.baseCurrency}, unhedged, ${st.returnBasis} monthly total returns`],
+    ["FX conversion", st.fx],
+    ["Annualisation", "μ = mean × 12; σ = sample stdev × √12; correlations from monthly EUR returns"],
+    ["Risk-free default", `${st.riskFreeSource} = ${pct(HIST.mu[CASH_IDX], 2)}`],
+    ["Data build / page build", `${st.built} / ${PAGE_BUILT}`],
+    ["Pipeline", "github.com/ladastary/mpt-data, GitHub Actions, 3rd of each month"]
+  ].map(([k, v]) => `<div><span>${esc(k)}</span>${esc(v)}</div>`).join("");
+  const g = ASSETS[IDX.GOLD];
+  $("gold-warn").innerHTML = g ? `<b>Gold volatility is understated by roughly 15–20%.</b> The only automatable full-history source is the World Bank monthly-average price, which smooths month-end moves: σ shown ${pct(g.vol)}, true σ likely 16–17%. The optimizer therefore tends to over-weight gold (decision D12: accepted as is, no scaling).` : "";
+  const b = DATA.usBondYieldBias;
+  $("lims").innerHTML = [
+    "Historical means are used as expected returns (D2). Standard error of a 25-year mean at 16% vol ≈ 3.2pp a year; the optimizer over-weights whatever happened to win in this window. Weight caps are the main guard.",
+    "The window starts shortly after the dot-com peak and spans the end of a 40-year bond rally (to 2022). Results depend on the window.",
+    b ? `Bond volatility is understated because OECD yields are monthly averages. US 10Y test: σ ${pct(b.vol_monthlyAvgYield)} with monthly-average yields vs ${pct(b.vol_monthEndYield)} with month-end yields; the Bund is likely understated more.` : "Bond volatility is understated because OECD yields are monthly averages.",
+    "Bond returns are synthetic constant-maturity: buy a 10Y par bond at last month's yield, reprice as 9Y11M at this month's yield, add one month of coupon, convert to EUR.",
+    "Returns are gross of ETF fees and of withholding tax beyond MSCI's net-return convention. Income yield is not shown yet: no automated source (D7).",
+    "EUR cash uses the euro-area call-money rate, extended with €STR after the OECD series ends."
+  ].map(t => `<li>${esc(t)}</li>`).join("");
+  const hc = DATA.checks;
+  $("checks").innerHTML = `<div><b>${hardOk}/${hard.length}</b> hard checks passed${softWarn.length ? `, <span class="soft">${softWarn.length} warning${softWarn.length > 1 ? "s" : ""}</span>` : ""}.</div>`
+    + `<details><summary style="cursor:pointer; color:var(--ink-2)">Show all ${hc.length} checks</summary><div class="checks" style="margin-top:6px">`
+    + hc.map(c => `<div><span class="${c.ok ? "ok" : c.hard ? "fail" : "soft"}">${c.ok ? "✓" : c.hard ? "✗" : "!"}</span> ${esc(c.check)} <span class="muted">· ${esc(c.detail)}</span></div>`).join("")
+    + "</div></details>";
+  buildStatsTable(); buildCorrTable();
+}
+function buildStatsTable() {
+  const head = `<tr><th>Asset</th><th class="n">Exp. return %</th><th class="n">Volatility %</th><th class="n">CAGR</th><th class="n">Max DD</th><th class="n">Worst 12m</th><th>Series</th><th>Source</th><th>UCITS proxy</th><th>Retrieved</th></tr>`;
+  const body = ASSETS.map((a, i) => `<tr>
+    <td><span class="sw" style="display:inline-block; margin-right:6px; --c:${colorVar(a.id)}"></span>${esc(a.name)}${a.defaultOn ? "" : ' <span class="tag">optional</span>'}</td>
+    <td class="n"><input class="edit" id="ed-mu-${a.id}" type="number" step="0.1" inputmode="decimal" aria-label="${esc(plainName(a))} expected return"></td>
+    <td class="n"><input class="edit" id="ed-vol-${a.id}" type="number" step="0.1" min="0" inputmode="decimal" aria-label="${esc(plainName(a))} volatility"></td>
+    <td class="n mono">${pct(a.cagr)}</td><td class="n mono">${pct(a.maxDD)}</td><td class="n mono">${pct(a.worst12m)}</td>
+    <td>${esc(a.seriesType)}</td><td class="wrapc">${esc(a.source)}</td><td>${esc(a.proxy)}</td><td class="mono">${esc(a.retrieved)}</td></tr>`).join("");
+  $("stats-table").innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
+  syncStatsTable();
+}
+function syncStatsTable() {
+  ASSETS.forEach((a, i) => {
+    const mu = $("ed-mu-" + a.id), vo = $("ed-vol-" + a.id);
+    if (document.activeElement !== mu) mu.value = (STATE.muRaw[i] * 100).toFixed(2);
+    if (document.activeElement !== vo) vo.value = (STATE.vol[i] * 100).toFixed(2);
+    mu.classList.toggle("changed", Math.abs(STATE.muRaw[i] - HIST.mu[i]) > 5e-7);
+    vo.classList.toggle("changed", Math.abs(STATE.vol[i] - HIST.vol[i]) > 5e-7);
+  });
+}
+function mixHex(a, b, t) {
+  const p = h => { h = h.replace("#", ""); if (h.length === 3) h = h.split("").map(c => c + c).join(""); return [0, 2, 4].map(k => parseInt(h.slice(k, k + 2), 16)); };
+  const A = p(a), B = p(b); return "rgb(" + A.map((x, k) => Math.round(x + (B[k] - x) * t)).join(",") + ")";
+}
+function buildCorrTable() {
+  const head = "<tr><th></th>" + ASSETS.map(a => `<th title="${esc(a.name)}">${esc(SHORT[a.id] || a.id)}</th>`).join("") + "</tr>";
+  const body = ASSETS.map((a, i) => "<tr><th class='rh'>" + esc(SHORT[a.id] || a.id) + "</th>" + ASSETS.map((b, j) =>
+    i === j ? "<td class='diag'>1.00</td>" : `<td id="cc-${i}-${j}"><input id="ci-${i}-${j}" type="number" step="0.01" min="-1" max="1" inputmode="decimal" aria-label="Correlation ${esc(plainName(a))} and ${esc(plainName(b))}"></td>`).join("") + "</tr>").join("");
+  $("corr-table").innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
+  syncCorrTable();
+}
+function syncCorrTable() {
+  const mid = css("--div-mid"), pos = css("--div-pos"), neg = css("--div-neg");
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    if (i === j) continue;
+    const v = STATE.C[i][j], inp = $(`ci-${i}-${j}`), td = $(`cc-${i}-${j}`);
+    if (document.activeElement !== inp) inp.value = v.toFixed(2);
+    td.style.background = mixHex(mid, v >= 0 ? pos : neg, Math.min(0.8, Math.abs(v) * 0.8));
+    inp.classList.toggle("changed", Math.abs(v - HIST.C[i][j]) > 5e-7);
+  }
+}
+
+function buildHeader() {
+  const st = DATA.settings;
+  const [wy, wm] = st.window.end.split("-").map(Number), now = new Date();
+  const lag = now.getFullYear() * 12 + now.getMonth() + 1 - (wy * 12 + wm);
+  const stale = lag > 3 ? ` <span class="chip warn">window ends ${lag} months ago: check the pipeline</span>` : "";
+  $("top-meta").innerHTML = `25 years of monthly EUR returns · <span class="mono">${ym(st.window.start)} – ${ym(st.window.end)}</span> · data built <span class="mono">${esc(st.built)}</span>${stale}`;
+  $("foot-build").textContent = `v0.1 · page built ${PAGE_BUILT} · data ${st.built} from ladastary/mpt-data`;
+}
+// ===== END UI =====
+
+// ===== EVENTS =====
+let timer = null;
+function schedule() { clearTimeout(timer); timer = setTimeout(render, 50); }
+function render() {
+  const m = buildModel(), s = renderMetrics();
+  renderChart(m, s); renderPosition(m, s); renderRecs(m, s);
+  try { history.replaceState(null, "", "#" + encodeHash()); } catch (e) { /* not available in some frames */ }
+}
+function onCorrChange(i, j, raw) {
+  let v = Number(raw); if (!isFinite(v)) return;
+  v = Math.max(-1, Math.min(1, v));
+  STATE.C[i][j] = v; STATE.C[j][i] = v;
+  const r = M.psdRepair(STATE.C), al = $("psd-alert");
+  if (r.repaired) {
+    STATE.C = r.C;
+    const [a, b] = r.at;
+    al.hidden = false;
+    al.textContent = `The edited matrix was not positive semi-definite (smallest eigenvalue ${r.minEig.toFixed(4)}). Repaired: eigenvalues clipped at 1e-8, diagonal rescaled to 1. Largest change ${r.maxChange.toFixed(3)} on ${plainName(ASSETS[a])} / ${plainName(ASSETS[b])}.`;
+  } else al.hidden = true;
+  syncCorrTable(); schedule();
+}
+function wire() {
+  ASSETS.forEach((a, i) => {
+    $("sl-" + a.id).addEventListener("input", e => { setWeight(i, Number(e.target.value) / 100); syncBuilder(); schedule(); });
+    $("nb-" + a.id).addEventListener("change", e => { const v = Number(e.target.value); if (isFinite(v)) setWeight(i, v / 100); e.target.blur(); syncBuilder(); schedule(); });
+    $("inc-" + a.id).addEventListener("change", e => { toggleInclude(i, e.target.checked); syncBuilder(); schedule(); });
+    $("lk-" + a.id).addEventListener("click", () => { STATE.lock[i] = !STATE.lock[i]; syncBuilder(); });
+    $("ed-mu-" + a.id).addEventListener("change", e => { const v = Number(e.target.value); if (isFinite(v)) { STATE.muRaw[i] = v / 100; syncStatsTable(); syncBuilder(); schedule(); } });
+    $("ed-vol-" + a.id).addEventListener("change", e => { const v = Number(e.target.value); if (isFinite(v) && v >= 0) { STATE.vol[i] = v / 100; syncStatsTable(); syncBuilder(); schedule(); } });
+  });
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (i !== j) $(`ci-${i}-${j}`).addEventListener("change", e => onCorrChange(i, j, e.target.value));
+  $("btn-equal").addEventListener("click", () => { equalWeights(); syncBuilder(); schedule(); });
+  $("btn-reset").addEventListener("click", () => { resetState(); syncBuilder(); schedule(); });
+  $("btn-restore").addEventListener("click", () => {
+    STATE.muRaw = HIST.mu.slice(); STATE.vol = HIST.vol.slice(); STATE.C = HIST.C.map(r => r.slice());
+    $("psd-alert").hidden = true; syncStatsTable(); syncCorrTable(); syncBuilder(); schedule();
+  });
+  const inRf = $("in-rf"), inInfl = $("in-infl"), inCap = $("in-cap");
+  inRf.value = (STATE.rf * 100).toFixed(2); inInfl.value = (STATE.infl * 100).toFixed(1); inCap.value = (STATE.cap * 100).toFixed(0);
+  inRf.addEventListener("change", () => { const v = Number(inRf.value); if (isFinite(v)) { STATE.rf = v / 100; schedule(); } });
+  inInfl.addEventListener("change", () => { const v = Number(inInfl.value); if (isFinite(v)) { STATE.infl = v / 100; schedule(); } });
+  inCap.addEventListener("change", () => { let v = Number(inCap.value); if (!isFinite(v)) return; v = Math.min(100, Math.max(1, v)); inCap.value = v; STATE.cap = v / 100; schedule(); });
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-apply]"); if (!b) return;
+    const m = buildModel(), rec = b.dataset.apply === "ms" ? m.ms : m.mv; if (rec) applyWeights(rec.wf);
+  });
+  $("btn-tests").addEventListener("click", () => {
+    const out = $("test-out"); out.textContent = "Running…";
+    setTimeout(() => {
+      const res = runSelfTests(M, DATA), ok = res.filter(r => r.ok).length;
+      out.innerHTML = `<div class="${ok === res.length ? "ok" : "fail"}">${ok}/${res.length} self-tests passed</div>` + res.map(r => `<div class="${r.ok ? "ok" : "fail"}">${r.ok ? "✓" : "✗"} ${esc(r.name)} <span class="muted">· ${esc(r.detail)}</span></div>`).join("");
+    }, 20);
+  });
+  const recolor = () => { syncCorrTable(); if (chart) render(); };
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", recolor); } catch (e) { /* old Safari */ }
+  new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+}
+function init() {
+  buildHeader(); buildBuilder(); buildAbout();
+  if (!decodeHash(location.hash)) resetState();
+  syncBuilder(); wire(); render();
+}
+init();
+// ===== END EVENTS =====
+
+// ===== TESTS =====
+// §10 definition of done. Run from the footer button or headless via site/test_page.mjs.
+function runSelfTests(M, DATA) {
+  const out = [], add = (name, ok, detail) => out.push({ name, ok: !!ok, detail });
+  const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const checkW = (w, lo, hi) => Math.abs(M.sum(w) - 1) <= 1e-9 && w.every((x, i) => x >= lo[i] - 1e-12 && x <= hi[i] + 1e-12);
+
+  // 1. Two-asset volatility formula
+  { const s1 = 0.2, s2 = 0.1, r = 0.3, w = [0.6, 0.4];
+    const S = M.covariance([s1, s2], [[1, r], [r, 1]]), v = M.stats(w, [0.08, 0.04], S, 0).vol;
+    const f = Math.sqrt(w[0] ** 2 * s1 ** 2 + w[1] ** 2 * s2 ** 2 + 2 * w[0] * w[1] * r * s1 * s2);
+    add("Two-asset σ matches closed form", Math.abs(v - f) < 1e-9, `|Δ| = ${Math.abs(v - f).toExponential(2)}`); }
+
+  // 2. Perfect negative correlation: min-variance σ ≈ 0
+  { const S = M.covariance([0.2, 0.1], [[1, -1], [-1, 1]]);
+    const r = M.solveMV([0.08, 0.04], S, [0, 0], [1, 1], 0, null);
+    const v = M.stats(r.w, [0.08, 0.04], S, 0).vol;
+    add("ρ = −1 min-variance σ ≈ 0", v < 1e-6, `σ = ${v.toExponential(2)}, w = ${r.w.map(x => x.toFixed(4)).join("/")} (exact 0.3333/0.6667)`); }
+
+  // Default universe problems
+  const ids = DATA.assets.map(a => a.id), def = DATA.assets.map((a, i) => (a.defaultOn ? i : -1)).filter(i => i >= 0);
+  const Cfull = ids.map(a => ids.map(b => DATA.correlation.matrix[DATA.correlation.order.indexOf(a)][DATA.correlation.order.indexOf(b)]));
+  const mu = def.map(i => DATA.assets[i].expRet - (DATA.assets[i].ter || 0));
+  const S = M.covariance(def.map(i => DATA.assets[i].vol), def.map(i => def.map(j => Cfull[i][j])));
+  const cash = DATA.assets.find(a => a.id === "CASH_EUR"), rf = cash ? cash.expRet : 0;
+  let allOk = true, worstSum = 0, msOk = true, msDetail = [];
+  for (const cap of [1, 0.35, 0.2]) {
+    const lo = mu.map(() => 0), hi = mu.map(() => cap);
+    const pts = M.frontier(mu, S, lo, hi), ms = M.maxSharpe(mu, S, lo, hi, rf, pts);
+    for (const p of pts.concat([ms])) { worstSum = Math.max(worstSum, Math.abs(M.sum(p.w) - 1)); if (!checkW(p.w, lo, hi)) allOk = false; }
+    const best = Math.max(...pts.map(p => (p.ret - rf) / p.vol));
+    if (ms.sharpe < best - 1e-12) msOk = false;
+    msDetail.push(`cap ${cap * 100}%: ${ms.sharpe.toFixed(4)} ≥ ${best.toFixed(4)} (${pts.length} pts)`);
+  }
+  // Random 30-asset problem with tight bounds, timed
+  const n30 = 30, F = 3;
+  const B = Array.from({ length: n30 }, () => Array.from({ length: F }, () => rnd() * 2 - 1));
+  const C30 = B.map((bi, i) => B.map((bj, j) => {
+    if (i === j) return 1;
+    const dij = bi.reduce((t, x, k) => t + x * bj[k], 0), di = bi.reduce((t, x) => t + x * x, 0) + 0.5, dj = bj.reduce((t, x) => t + x * x, 0) + 0.5;
+    return dij / Math.sqrt(di * dj); }));
+  const mu30 = Array.from({ length: n30 }, () => 0.01 + rnd() * 0.1), vol30 = Array.from({ length: n30 }, () => 0.02 + rnd() * 0.25);
+  const S30 = M.covariance(vol30, C30), lo30 = mu30.map(() => 0), hi30 = mu30.map(() => 0.1);
+  const t0 = now(); const p30 = M.frontier(mu30, S30, lo30, hi30); const ms30 = M.maxSharpe(mu30, S30, lo30, hi30, 0.01, p30); const dt = now() - t0;
+  for (const p of p30.concat([ms30])) { worstSum = Math.max(worstSum, Math.abs(M.sum(p.w) - 1)); if (!checkW(p.w, lo30, hi30)) allOk = false; }
+  if (ms30.sharpe < Math.max(...p30.map(p => (p.ret - 0.01) / p.vol)) - 1e-12) msOk = false;
+
+  add("Optimizer weights sum to 1 ± 1e-9 and respect bounds", allOk, `worst |Σw − 1| = ${worstSum.toExponential(2)}; caps 100/35/20% and 30 assets ≤ 10%`);
+  add("Max-Sharpe ≥ every frontier point", msOk, msDetail.join("; "));
+  add("30-asset frontier + max-Sharpe < 200 ms", dt < 200, `${dt.toFixed(0)} ms, ${p30.length} frontier points`);
+
+  // Projection exactness
+  { let ok = true, worst = 0;
+    for (let k = 0; k < 200; k++) {
+      const n = 2 + Math.floor(rnd() * 20), v = Array.from({ length: n }, () => rnd() * 4 - 2);
+      const lo = v.map(() => rnd() * 0.02), hi = v.map(() => 0.3 + rnd() * 0.7);
+      if (M.sum(lo) > 1 || M.sum(hi) < 1) continue;
+      const w = M.project(v, lo, hi); worst = Math.max(worst, Math.abs(M.sum(w) - 1)); if (!checkW(w, lo, hi)) ok = false;
+    }
+    add("Projection onto bounded simplex is exact", ok, `worst |Σw − 1| = ${worst.toExponential(2)} over random cases`); }
+
+  // 5. Embedded annualised stats recompute from embedded monthly series
+  { let worst = 0, where = "";
+    for (const a of DATA.assets) {
+      const s = M.annualise(DATA.monthly.returns[a.id]);
+      const e = Math.max(Math.abs(s.mu - a.expRet), Math.abs(s.vol - a.vol));
+      if (e > worst) { worst = e; where = a.id; }
+    }
+    const o = DATA.correlation.order; let wc = 0;
+    for (let i = 0; i < o.length; i++) for (let j = 0; j < o.length; j++) wc = Math.max(wc, Math.abs(M.corr(DATA.monthly.returns[o[i]], DATA.monthly.returns[o[j]]) - DATA.correlation.matrix[i][j]));
+    const nOk = DATA.assets.every(a => DATA.monthly.returns[a.id].length === DATA.settings.window.months) && DATA.monthly.dates.length === DATA.settings.window.months;
+    // Tolerance 1e-6: stats are stored to 6 dp and monthly returns to 8 dp, so exact recomputation differs only by rounding.
+    add("Embedded stats recompute from monthly series", worst <= 1e-6 && wc <= 1e-6 && nOk, `max gap μ/σ ${worst.toExponential(1)} (${where}), corr ${wc.toExponential(1)}; rounding tolerance 1e-6; ${DATA.monthly.dates.length} months`); }
+
+  // PSD repair
+  { const bad = [[1, 0.9, -0.9], [0.9, 1, 0.9], [-0.9, 0.9, 1]];
+    const r = M.psdRepair(bad), e = M.jacobi(r.C), mn = Math.min(...e.values);
+    const diag = r.C.every((row, i) => Math.abs(row[i] - 1) < 1e-12);
+    const sym = r.C.every((row, i) => row.every((x, j) => Math.abs(x - r.C[j][i]) < 1e-15));
+    add("PSD repair yields PSD, symmetric, unit diagonal", r.repaired && mn > -1e-10 && diag && sym, `min eigenvalue ${r.minEig.toFixed(3)} → ${mn.toExponential(2)}`);
+    const h = M.jacobi(Cfull); let rec = 0;
+    for (let i = 0; i < Cfull.length; i++) for (let j = 0; j < Cfull.length; j++) { let s = 0; for (let k = 0; k < Cfull.length; k++) s += h.vectors[i][k] * h.values[k] * h.vectors[j][k]; rec = Math.max(rec, Math.abs(s - Cfull[i][j])); }
+    add("Historical correlation matrix is PSD (Jacobi check)", Math.min(...h.values) > -1e-10 && rec < 1e-10, `min eigenvalue ${Math.min(...h.values).toFixed(4)}, reconstruction error ${rec.toExponential(1)}`); }
+  return out;
+}
+// ===== END TESTS =====
+</script>
