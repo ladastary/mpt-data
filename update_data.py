@@ -35,11 +35,11 @@ def check(name, ok, detail, hard=True):
 
 
 # ---------------------------------------------------------------- helpers
-def http_get(url, tries=4, timeout=90):
+def http_get(url, tries=4, timeout=90, headers=None):
     last = None
     for i in range(tries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+            req = urllib.request.Request(url, headers=headers or {"User-Agent": UA, "Accept": "*/*"})
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read().decode("utf-8", errors="replace")
         except Exception as e:  # noqa
@@ -187,7 +187,12 @@ def msci(code, ccy):
 
 def gold_lbma():
     """LBMA Gold Price PM, daily, EUR (column 3). Returns ({'YYYY-MM': EUR month-end}, note)."""
-    j = json.loads(http_get("https://prices.lbma.org.uk/json/gold_pm.json"))
+    j = json.loads(http_get("https://prices.lbma.org.uk/json/gold_pm.json", tries=2, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/126.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.lbma.org.uk/prices-and-data/precious-metal-prices",
+        "Origin": "https://www.lbma.org.uk"}))
     daily = {}
     for row in j:
         d = dt.date.fromisoformat(row["d"])
@@ -196,6 +201,36 @@ def gold_lbma():
             daily[d] = float(v[2])
     save_raw("lbma_gold_pm_EUR_daily", daily)
     return complete_only(month_end(daily))
+
+
+def gold_bundesbank():
+    """Deutsche Bundesbank time-series API: daily London gold fixing in USD (dataflow BBEX3).
+    Discovers the available XAU/USD series, logs them, prefers the afternoon (PM) fixing.
+    Returns {'YYYY-MM': USD month-end}."""
+    url = ("https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.USD..?"
+           "format=sdmx_csv&startPeriod=2000-01-01")
+    rows = list(csv.DictReader(io.StringIO(http_get(url, tries=2))))
+    if not rows:
+        raise RuntimeError("Bundesbank: empty response")
+    cols = list(rows[0].keys())
+    log(f"Bundesbank columns: {cols}")
+    key_cols = [c for c in cols if c not in ("TIME_PERIOD", "OBS_VALUE") and c.upper() == c
+                and not c.startswith(("BBK_OBS", "OBS_", "DATAFLOW"))]
+    series = {}
+    for r in rows:
+        k = ".".join(r.get(c, "") for c in key_cols)
+        v = (r.get("OBS_VALUE") or "").strip()
+        if v and v not in (".", "NaN"):
+            series.setdefault(k, {})[dt.date.fromisoformat(r["TIME_PERIOD"][:10])] = float(v)
+    for k, s in series.items():
+        log(f"Bundesbank series {k}: {len(s)} obs, {min(s)}..{max(s)}, last {s[max(s)]}")
+    pm = [k for k in series if "C05" in k] or sorted(series, key=lambda k: -len(series[k]))
+    k = pm[0]
+    s = series[k]
+    if min(s) > dt.date(2001, 1, 31) or (TODAY - max(s)).days > 45:
+        raise RuntimeError(f"Bundesbank series {k} does not cover the window")
+    save_raw(f"bundesbank_gold_USD_daily_{k.replace('.', '_')}", s)
+    return complete_only(month_end(s)), k
 
 
 def gold_worldbank(usd_per_eur_me):
@@ -287,23 +322,27 @@ MAX_ABS_MONTHLY = {"EQ": 0.35, "CM": 0.25, "BD": 0.18, "CA": 0.01}
 def build():
     ret, meta = {}, {}
 
-    # FX: Czech National Bank fixing -> month-end EUR per USD, EUR per CZK
+    # FX. CZK: Czech National Bank fixing (14:30 Prague). USD: Fed H.10 noon New York (FRED DEXUSEU),
+    # chosen because it sits within ~0.2pp/month of the WM/Reuters 4pm London rate MSCI uses, so all
+    # USD assets share the equities' fixing time. CNB EUR/USD is the cross-check and the fallback.
     czk_eur, czk_usd = cnb_fx()
     czk_eur_me, czk_usd_me = complete_only(month_end(czk_eur)), complete_only(month_end(czk_usd))
-    usd_per_eur = {m: czk_eur_me[m] / czk_usd_me[m] for m in czk_eur_me if m in czk_usd_me}
+    usd_per_eur_cnb = {m: czk_eur_me[m] / czk_usd_me[m] for m in czk_eur_me if m in czk_usd_me}
+    try:
+        usd_per_eur = complete_only(month_end(fred("DEXUSEU")))
+        fx_src = "USD: Fed H.10 noon NY (FRED DEXUSEU), month-end; CZK: Czech National Bank fixing, month-end"
+        common = [m for m in usd_per_eur if m in usd_per_eur_cnb]
+        dev = max(abs(usd_per_eur[m] / usd_per_eur_cnb[m] - 1) for m in common)
+        check("FX: Fed EUR/USD vs CNB cross-rate", dev < 0.025, f"max month-end gap {dev:.2%} over {len(common)} months")
+    except Exception as e:
+        usd_per_eur = usd_per_eur_cnb
+        fx_src = "USD and CZK: Czech National Bank fixing, month-end (Fed rate unavailable)"
+        check("FX: Fed EUR/USD available", False, f"fell back to CNB: {e}", hard=False)
     eur_per = {"EUR": None,
                "USD": {m: 1 / v for m, v in usd_per_eur.items()},
                "CZK": {m: 1 / v for m, v in czk_eur_me.items()}}
-    save_raw("fx_USD_per_EUR_monthend_CNB", usd_per_eur)
-
-    # Cross-check CNB EUR/USD against the Fed (FRED DEXUSEU)
-    try:
-        fed = complete_only(month_end(fred("DEXUSEU")))
-        common = [m for m in usd_per_eur if m in fed]
-        dev = max(abs(usd_per_eur[m] / fed[m] - 1) for m in common)
-        check("FX: CNB EUR/USD vs Fed H.10", dev < 0.02, f"max month-end gap {dev:.2%} over {len(common)} months")
-    except Exception as e:
-        check("FX: CNB EUR/USD vs Fed H.10", False, f"could not run: {e}", hard=False)
+    save_raw("fx_USD_per_EUR_monthend_used", usd_per_eur)
+    meta["_fx"] = fx_src
 
     # Equities: MSCI net return, native EUR series; USD series used for checks
     for a in [x for x in ASSETS if x["kind"] == "msci"]:
@@ -316,23 +355,31 @@ def build():
         conv = to_eur(r_usd, eur_per["USD"])
         common = sorted(set(conv) & set(r_eur))
         gap = sum(abs(conv[m] - r_eur[m]) for m in common) / len(common)
-        check(f"{a['id']}: MSCI EUR vs USD converted at CNB FX", gap < 0.005,
+        check(f"{a['id']}: MSCI EUR vs MSCI USD converted at our FX", gap < 0.004,
               f"mean abs monthly gap {gap * 100:.2f}pp over {len(common)} months")
         meta[a["id"]] = dict(source=f"MSCI index {a['code']}, net return, EUR (MSCI end-of-month data)",
                              seriesType="index")
 
-    # Gold: LBMA PM in EUR (month-end); fallback World Bank monthly average
+    # Gold: 1) LBMA PM in EUR, month-end  2) Bundesbank London fixing USD, month-end -> EUR
+    #       3) World Bank monthly AVERAGE (vol understated)
     try:
-        g = gold_lbma()
+        ret["GOLD"] = level_returns(gold_lbma())
         meta["GOLD"] = dict(source="LBMA Gold Price PM, EUR, month-end", seriesType="spot-price")
-    except Exception as e:
-        log(f"LBMA gold unavailable ({e}); using World Bank monthly average")
-        g = gold_worldbank(usd_per_eur)
-        meta["GOLD"] = dict(source="World Bank Pink Sheet, monthly AVERAGE USD price, EUR via CNB month-end",
-                            seriesType="spot-price (monthly average)")
-        check("GOLD: month-end price available", False,
-              "LBMA feed unavailable - fallback uses monthly averages (vol understated)", hard=False)
-    ret["GOLD"] = level_returns(g)
+    except Exception as e1:
+        log(f"LBMA gold unavailable: {e1}")
+        try:
+            g_usd, key = gold_bundesbank()
+            ret["GOLD"] = to_eur(level_returns(g_usd), eur_per["USD"])
+            meta["GOLD"] = dict(source=f"London gold fixing USD via Deutsche Bundesbank ({key}), month-end; "
+                                       f"EUR at month-end FX", seriesType="spot-price")
+        except Exception as e2:
+            log(f"Bundesbank gold unavailable: {e2}")
+            g = gold_worldbank(usd_per_eur)
+            ret["GOLD"] = level_returns(g)
+            meta["GOLD"] = dict(source="World Bank Pink Sheet, monthly AVERAGE USD price, EUR at month-end FX",
+                                seriesType="spot-price (monthly average)")
+            check("GOLD: month-end price available", False,
+                  "no month-end source reachable - fallback uses monthly averages (vol understated)", hard=False)
 
     # Bonds: synthetic constant-maturity 10Y total return from OECD monthly yields (FRED)
     for a in [x for x in ASSETS if x["kind"] == "bond"]:
@@ -376,6 +423,9 @@ def build():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
+    os.makedirs(RAW, exist_ok=True)
+    for f in os.listdir(RAW):  # raw/ always mirrors the latest run only
+        os.remove(os.path.join(RAW, f))
     retrieved = TODAY.isoformat()
     try:
         ret, meta = build()
@@ -426,7 +476,7 @@ def main():
                 }
             result = {
                 "settings": {"baseCurrency": "EUR", "riskFree": None, "riskFreeSource": "CASH_EUR historical mean",
-                             "returnBasis": "nominal", "fx": "Czech National Bank daily fixing, month-end",
+                             "returnBasis": "nominal", "fx": meta["_fx"],
                              "window": {"start": start, "end": end, "months": len(dates)},
                              "built": retrieved},
                 "classes": CLASSES,
