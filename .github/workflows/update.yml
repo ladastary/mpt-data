@@ -1,0 +1,39 @@
+name: Update data
+
+on:
+  schedule:
+    - cron: "17 6 3 * *"      # 06:17 UTC on the 3rd of every month
+  workflow_dispatch:           # "Run workflow" button on GitHub
+  push:
+    paths:
+      - update_data.py
+      - .github/workflows/update.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download, build and check data
+        run: python update_data.py
+      - name: Save results to the repo
+        if: always()
+        run: |
+          git config user.name  "mpt-data bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data raw QUALITY.md 2>/dev/null || true
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Data update $(date -u +%Y-%m-%d)"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
