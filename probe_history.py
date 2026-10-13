@@ -6,24 +6,24 @@ from update_data import http_get, MSCI_URL, CNB_URL
 L = ["# History depth probe", "", f"Run {dt.date.today()}", ""]
 def row(*c): L.append("| " + " | ".join(str(x) for x in c) + " |")
 
-L += ["## MSCI start-date tests", "", "| code | variant | ccy | start asked | first | last | points / reply |", "|---|---|---|---|---|---|---|"]
-def msci_try(code, var, ccy, s, e=None):
-    e = e or dt.date.today().strftime("%Y%m%d")
-    url = MSCI_URL.format(ccy=ccy, s=s, e=e, code=code).replace("NETR", var)
+import zipfile, urllib.request
+L += ["## Kenneth French data library (monthly market return = Mkt-RF + RF)", "", "| file | first month | last month | months | header |", "|---|---|---|---|---|"]
+FR = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
+for f in ["F-F_Research_Data_Factors_CSV.zip", "Developed_3_Factors_CSV.zip", "Europe_3_Factors_CSV.zip",
+          "Emerging_5_Factors_CSV.zip", "Developed_ex_US_3_Factors_CSV.zip"]:
     try:
-        t = http_get(url, tries=2)
-        j = json.loads(t)
-        lv = j.get("indexes", {}).get("INDEX_LEVELS")
-        if not lv:
-            row(code, var, ccy, s, "-", "-", t[:600].replace("|", "/"))
-        else:
-            row(code, var, ccy, s, lv[0]["calc_date"], lv[-1]["calc_date"], len(lv))
+        req = urllib.request.Request(FR + f, headers={"User-Agent": "Mozilla/5.0 (compatible; mpt-data/1.0)"})
+        raw = urllib.request.urlopen(req, timeout=60).read()
+        z = zipfile.ZipFile(io.BytesIO(raw)); txt = z.read(z.namelist()[0]).decode("latin-1")
+        months, hdr = [], ""
+        for line in txt.splitlines():
+            c = [x.strip() for x in line.split(",")]
+            if c and c[0] == "" and len(c) > 2 and not hdr: hdr = ",".join(c[1:])
+            if c and len(c[0]) == 6 and c[0].isdigit(): months.append(c[0])
+            elif months and c and len(c[0]) == 4 and c[0].isdigit(): break  # annual block starts
+        row(f, months[0], months[-1], len(months), hdr[:60])
     except Exception as ex:
-        row(code, var, ccy, s, "ERR", "", str(ex)[:100])
-for s0 in ["19871231", "19991231", "20000630", "20001031", "20001130", "20001229", "20010131"]:
-    msci_try("990100", "NETR", "USD", s0)
-msci_try("990100", "NETR", "USD", "19991231", "20051230")
-msci_try("990100", "STRD", "USD", "19991231")
+        row(f, "ERR", str(ex)[:80], "", "")
 L += ["", "## FRED", "", "| series | first | last | obs |", "|---|---|---|---|"]
 for s in ["IRLTLT01CZM156N", "IRLTLT01DEM156N", "IRLTLT01USM156N", "DGS10", "GS10", "IRSTCI01EZM156N",
           "IRSTCI01DEM156N", "IR3TIB01DEM156N", "IR3TIB01CZM156N", "IRSTCI01CZM156N", "DEXUSEU", "DEXGEUS", "EXGEUS",
