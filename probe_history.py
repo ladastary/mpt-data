@@ -22,6 +22,15 @@ for f in ["F-F_Research_Data_Factors_CSV.zip", "Developed_3_Factors_CSV.zip", "E
             if c and len(c[0]) == 6 and c[0].isdigit(): months.append(c[0])
             elif months and c and len(c[0]) == 4 and c[0].isdigit(): break  # annual block starts
         row(f, months[0], months[-1], len(months), hdr[:60])
+        with open(f"probe_french_{f.split('_')[0]}.csv", "w") as out:
+            out.write("month,mkt_usd\n")
+            for line in txt.splitlines():
+                c = [x.strip() for x in line.split(",")]
+                if c and len(c[0]) == 6 and c[0].isdigit():
+                    hd = hdr.split(",")
+                    out.write(f"{c[0][:4]}-{c[0][4:]},{(float(c[1]) + float(c[1 + hd.index('RF')])) / 100}\n")
+                elif c and len(c[0]) == 4 and c[0].isdigit():
+                    break
     except Exception as ex:
         row(f, "ERR", str(ex)[:80], "", "")
 L += ["", "## FRED", "", "| series | first | last | obs |", "|---|---|---|---|"]
