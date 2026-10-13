@@ -207,11 +207,19 @@ def gold_bundesbank():
     """Deutsche Bundesbank time-series API: daily London gold fixing in USD (dataflow BBEX3).
     Discovers the available XAU/USD series, logs them, prefers the afternoon (PM) fixing.
     Returns {'YYYY-MM': USD month-end}."""
-    url = ("https://api.statistiken.bundesbank.de/rest/data/BBEX3/D.XAU.USD..?"
-           "format=sdmx_csv&startPeriod=2000-01-01")
-    rows = list(csv.DictReader(io.StringIO(http_get(url, tries=2))))
+    rows, errs = [], []
+    for key in ("D.XAU.USD.EA.AC.C05", "D.XAU.USD.EA.AC.", "D.XAU.....", "D..XAU...."):
+        url = (f"https://api.statistiken.bundesbank.de/rest/data/BBEX3/{key}?"
+               "format=sdmx_csv&startPeriod=2000-01-01")
+        try:
+            rows = list(csv.DictReader(io.StringIO(http_get(url, tries=1))))
+            if rows:
+                log(f"Bundesbank key {key}: {len(rows)} rows")
+                break
+        except Exception as e:
+            errs.append(f"{key}: {e}")
     if not rows:
-        raise RuntimeError("Bundesbank: empty response")
+        raise RuntimeError("Bundesbank: no matching series; " + " | ".join(errs))
     cols = list(rows[0].keys())
     log(f"Bundesbank columns: {cols}")
     key_cols = [c for c in cols if c not in ("TIME_PERIOD", "OBS_VALUE") and c.upper() == c
@@ -390,7 +398,7 @@ def build():
         ret[a["id"]] = local if a["ccy"] == "EUR" else to_eur(local, eur_per[a["ccy"]])
         meta[a["id"]] = dict(
             source=f"OECD 10Y govt yield via FRED {a['code']} (monthly average); synthetic constant-maturity "
-                   f"total return" + ("" if a["ccy"] == "EUR" else f"; {a['ccy']}->EUR at CNB month-end fixing"),
+                   f"total return" + ("" if a["ccy"] == "EUR" else f"; {a['ccy']}->EUR at month-end FX"),
             seriesType="synthetic-from-yield")
 
     # Cash: euro-area call money rate (EONIA proxy, OECD via FRED), extended with ESTR (ECB via FRED)
