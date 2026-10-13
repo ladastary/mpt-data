@@ -6,25 +6,29 @@ from update_data import http_get, MSCI_URL, CNB_URL
 L = ["# History depth probe", "", f"Run {dt.date.today()}", ""]
 def row(*c): L.append("| " + " | ".join(str(x) for x in c) + " |")
 
-L += ["## MSCI (requested from 1969-12-31)", "", "| code | variant | ccy | first | last | points |", "|---|---|---|---|---|---|"]
-for code in ["990100", "984000", "990500", "928000", "891800"]:
+L += ["## MSCI start-date tests", "", "| code | variant | ccy | start asked | first | last | points / reply |", "|---|---|---|---|---|---|---|"]
+def msci_try(code, var, ccy, s, e=None):
+    e = e or dt.date.today().strftime("%Y%m%d")
+    url = MSCI_URL.format(ccy=ccy, s=s, e=e, code=code).replace("NETR", var)
+    try:
+        t = http_get(url, tries=2)
+        j = json.loads(t)
+        lv = j.get("indexes", {}).get("INDEX_LEVELS")
+        if not lv:
+            row(code, var, ccy, s, "-", "-", t[:160].replace("|", "/"))
+        else:
+            row(code, var, ccy, s, lv[0]["calc_date"], lv[-1]["calc_date"], len(lv))
+    except Exception as ex:
+        row(code, var, ccy, s, "ERR", "", str(ex)[:100])
+for s0 in ["19691231", "19781229", "19841231", "19871231", "19881230", "19921231", "19951229", "19981231"]:
+    msci_try("990100", "NETR", "USD", s0)
+for s0, e0 in [("19691231", "19891229"), ("19891229", "20091231")]:
+    msci_try("990100", "NETR", "USD", s0, e0)
+for code in ["984000", "990500", "928000", "891800"]:
     for var in ["NETR", "GRTR"]:
-        for ccy in ["USD", "EUR"]:
-            try:
-                url = MSCI_URL.format(ccy=ccy, s="19691231", e=dt.date.today().strftime("%Y%m%d"), code=code).replace("NETR", var)
-                j = json.loads(http_get(url, tries=2))
-                lv = j["indexes"]["INDEX_LEVELS"]
-                row(code, var, ccy, lv[0]["calc_date"], lv[-1]["calc_date"], len(lv))
-            except Exception as e:
-                row(code, var, ccy, "ERR", str(e)[:80], "")
-# chunked request to detect a row cap
-try:
-    url = MSCI_URL.format(ccy="USD", s="19691231", e="19991231", code="990100")
-    lv = json.loads(http_get(url, tries=2))["indexes"]["INDEX_LEVELS"]
-    L += ["", f"Chunk test 990100 NETR USD 1969-1999: first {lv[0]['calc_date']}, last {lv[-1]['calc_date']}, {len(lv)} points"]
-except Exception as e:
-    L += ["", f"Chunk test failed: {e}"]
-
+        msci_try(code, var, "USD", "19871231")
+for code in ["990100", "891800"]:
+    msci_try(code, "NETR", "EUR", "19871231")
 L += ["", "## FRED", "", "| series | first | last | obs |", "|---|---|---|---|"]
 for s in ["IRLTLT01CZM156N", "IRLTLT01DEM156N", "IRLTLT01USM156N", "DGS10", "GS10", "IRSTCI01EZM156N",
           "IRSTCI01DEM156N", "IR3TIB01DEM156N", "IR3TIB01CZM156N", "IRSTCI01CZM156N", "DEXUSEU", "DEXGEUS", "EXGEUS",
