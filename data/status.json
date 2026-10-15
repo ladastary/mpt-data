@@ -1,5 +1,5 @@
 {
- "run": "2026-10-15T05:43:19Z",
+ "run": "2026-10-15T05:45:51Z",
  "ok": true,
  "published": true,
  "checks": [
@@ -230,6 +230,78 @@
    "ok": true,
    "hard": false,
    "detail": "window ends 2026-08, 2 months before today"
+  },
+  {
+   "check": "LONG synthetic EUR/USD (CNB D-Mark x 1.95583) vs Fed, 1999-2001",
+   "ok": true,
+   "hard": false,
+   "detail": "max gap 1.64% over 24 months"
+  },
+  {
+   "check": "LONG EQ_US: French vs MSCI overlap",
+   "ok": true,
+   "hard": false,
+   "detail": "corr 0.994, tracking error 1.6% p.a., mean gap +0.87pp p.a. over 308 months"
+  },
+  {
+   "check": "LONG EQ_EU: French vs MSCI overlap",
+   "ok": true,
+   "hard": false,
+   "detail": "corr 0.993, tracking error 1.8% p.a., mean gap +0.95pp p.a. over 308 months"
+  },
+  {
+   "check": "LONG EQ_EM: French vs MSCI overlap",
+   "ok": true,
+   "hard": false,
+   "detail": "corr 0.992, tracking error 2.3% p.a., mean gap +0.72pp p.a. over 308 months"
+  },
+  {
+   "check": "LONG EQ_US: no gaps or implausible moves",
+   "ok": false,
+   "hard": false,
+   "detail": "1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []"
+  },
+  {
+   "check": "LONG EQ_EU: no gaps or implausible moves",
+   "ok": false,
+   "hard": false,
+   "detail": "1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []"
+  },
+  {
+   "check": "LONG EQ_EM: no gaps or implausible moves",
+   "ok": false,
+   "hard": false,
+   "detail": "1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []"
+  },
+  {
+   "check": "LONG GOLD: no gaps or implausible moves",
+   "ok": false,
+   "hard": false,
+   "detail": "1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []"
+  },
+  {
+   "check": "LONG BD_US10: no gaps or implausible moves",
+   "ok": false,
+   "hard": false,
+   "detail": "1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []"
+  },
+  {
+   "check": "LONG BD_DE10: no gaps or implausible moves",
+   "ok": true,
+   "hard": false,
+   "detail": "1991-02..2026-08, missing [], flagged []"
+  },
+  {
+   "check": "LONG CASH_EUR: no gaps or implausible moves",
+   "ok": true,
+   "hard": false,
+   "detail": "1991-02..2026-08, missing [], flagged []"
+  },
+  {
+   "check": "LONG long window start",
+   "ok": true,
+   "hard": false,
+   "detail": "starts 1991-02 (must start by 1992-01), 427 months"
   }
  ],
  "log": [
@@ -273,6 +345,19 @@
   "[PASS] BD_CZ10: no implausible monthly moves (>18%): flagged []",
   "[PASS] CASH_EUR: no gaps in window: 2001-01..2026-08, missing 0 []",
   "[PASS] CASH_EUR: no implausible monthly moves (>1%): flagged []",
-  "[PASS] window is current: window ends 2026-08, 2 months before today"
+  "[PASS] window is current: window ends 2026-08, 2 months before today",
+  "[PASS] LONG synthetic EUR/USD (CNB D-Mark x 1.95583) vs Fed, 1999-2001: max gap 1.64% over 24 months",
+  "[PASS] LONG EQ_US: French vs MSCI overlap: corr 0.994, tracking error 1.6% p.a., mean gap +0.87pp p.a. over 308 months",
+  "[PASS] LONG EQ_EU: French vs MSCI overlap: corr 0.993, tracking error 1.8% p.a., mean gap +0.95pp p.a. over 308 months",
+  "[PASS] LONG EQ_EM: French vs MSCI overlap: corr 0.992, tracking error 2.3% p.a., mean gap +0.72pp p.a. over 308 months",
+  "[WARN] LONG EQ_US: no gaps or implausible moves: 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []",
+  "[WARN] LONG EQ_EU: no gaps or implausible moves: 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []",
+  "[WARN] LONG EQ_EM: no gaps or implausible moves: 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []",
+  "[WARN] LONG GOLD: no gaps or implausible moves: 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []",
+  "[WARN] LONG BD_US10: no gaps or implausible moves: 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []",
+  "[PASS] LONG BD_DE10: no gaps or implausible moves: 1991-02..2026-08, missing [], flagged []",
+  "[PASS] LONG CASH_EUR: no gaps or implausible moves: 1991-02..2026-08, missing [], flagged []",
+  "[PASS] LONG long window start: starts 1991-02 (must start by 1992-01), 427 months",
+  "Long window dropped: at least one long-window check failed."
  ]
 }

@@ -79,3 +79,15 @@ Built 2026-10-15 · window 2001-01 – 2026-08 (308 months) · all returns month
 - ✅ **CASH_EUR: no gaps in window** — 2001-01..2026-08, missing 0 []
 - ✅ **CASH_EUR: no implausible monthly moves (>1%)** — flagged []
 - ✅ **window is current** — window ends 2026-08, 2 months before today
+- ✅ **LONG synthetic EUR/USD (CNB D-Mark x 1.95583) vs Fed, 1999-2001** — max gap 1.64% over 24 months
+- ✅ **LONG EQ_US: French vs MSCI overlap** — corr 0.994, tracking error 1.6% p.a., mean gap +0.87pp p.a. over 308 months
+- ✅ **LONG EQ_EU: French vs MSCI overlap** — corr 0.993, tracking error 1.8% p.a., mean gap +0.95pp p.a. over 308 months
+- ✅ **LONG EQ_EM: French vs MSCI overlap** — corr 0.992, tracking error 2.3% p.a., mean gap +0.72pp p.a. over 308 months
+- ⚠️ **LONG EQ_US: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
+- ⚠️ **LONG EQ_EU: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
+- ⚠️ **LONG EQ_EM: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
+- ⚠️ **LONG GOLD: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
+- ⚠️ **LONG BD_US10: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
+- ✅ **LONG BD_DE10: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
+- ✅ **LONG CASH_EUR: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
+- ✅ **LONG long window start** — starts 1991-02 (must start by 1992-01), 427 months
