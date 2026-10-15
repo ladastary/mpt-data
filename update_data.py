@@ -536,8 +536,8 @@ def build_long(ret, meta, dates):
     synth = {m: v * DEM_PER_EUR for m, v in usd_dem.items()}
     ov = [m for m in synth if m >= "1999-01" and m in fx_main]
     dev = max(abs(synth[m] / fx_main[m] - 1) for m in ov) if ov else 1
-    lcheck("synthetic EUR/USD (CNB D-Mark x 1.95583) vs Fed, 1999-2001", dev < 0.025, f"max gap {dev:.2%} over {len(ov)} months")
-    usd_per_eur = {m: v for m, v in synth.items() if m < "1999-01"}
+    lcheck("synthetic EUR/USD (CNB D-Mark x 1.95583) vs Fed, overlap", dev < 0.025, f"max gap {dev:.2%} over {len(ov)} months")
+    usd_per_eur = {m: v for m, v in synth.items() if m not in fx_main}   # synthetic where the main FX series has no month
     usd_per_eur.update(fx_main)
     eur_per_usd = {m: 1 / v for m, v in usd_per_eur.items()}
 
@@ -593,7 +593,7 @@ def build_long(ret, meta, dates):
     return {
         "window": {"start": first, "end": dates[-1], "months": len(ldates)},
         "assets": list(LONG_ASSETS), "sources": src, "splice": splice,
-        "fx": "Before 1999: synthetic EUR = USD per DEM (Czech National Bank cross-rate, month-end) x 1.95583; from 1999 as the main window",
+        "fx": "USD before " + min(fx_main) + ": synthetic EUR = USD per DEM (Czech National Bank cross-rate, month-end) x 1.95583; from then as the main window",
         "dates": ldates,
         "returns": {aid: [round(series[aid][m], 8) for m in ldates] for aid in LONG_ASSETS},
     }
