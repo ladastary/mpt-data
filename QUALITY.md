@@ -39,6 +39,20 @@ Built 2026-10-15 · window 2001-01 – 2026-08 (308 months) · all returns month
 - σ with monthly-average yields: 10.1%; with month-end yields: 10.9%
 - corr with US equities: 0.10 (avg) vs 0.04 (month-end)
 
+## Optional long window 1991-02 – 2026-08 (427 months)
+
+| Asset | μ (arith.) | σ | Source before the main window |
+|---|---|---|---|
+| EQ_US | 11.9% | 16.0% | Kenneth French US market (CRSP), Mkt-RF + RF, USD -> EUR (synthetic EUR before 1999), before 2001-01; MSCI from 2001-01 |
+| EQ_EU | 8.7% | 14.8% | Kenneth French Europe market, Mkt-RF + RF, USD -> EUR (synthetic EUR before 1999), before 2001-01; MSCI from 2001-01 |
+| EQ_EM | 10.5% | 20.6% | Kenneth French Emerging market, Mkt-RF + RF, USD -> EUR (synthetic EUR before 1999), before 2001-01; MSCI from 2001-01 |
+| GOLD | 8.1% | 13.7% | World Bank monthly average USD price -> EUR before 2001-01; main gold series from 2001-01 |
+| BD_US10 | 5.6% | 10.4% | OECD 10Y yield via FRED IRLTLT01USM156N, synthetic constant-maturity, USD -> EUR |
+| BD_DE10 | 4.6% | 5.0% | OECD 10Y yield via FRED IRLTLT01DEM156N, synthetic constant-maturity, DEM = EUR / 1.95583 |
+| CASH_EUR | 2.6% | 0.8% | German call money (FRED IRSTCI01DEM156N) before 1994, euro-area call money from 1994; main cash series from 2001-01 |
+
+Splice diagnostics (French vs MSCI, EUR, over the main window): EQ_US corr 0.995, TE 1.6%, mean gap +0.87pp; EQ_EU corr 0.993, TE 1.8%, mean gap +0.95pp; EQ_EM corr 0.992, TE 2.3%, mean gap +0.72pp
+
 ## Checks
 
 - ✅ **FX: Fed EUR/USD vs CNB cross-rate** — max month-end gap 1.67% over 321 months
@@ -79,15 +93,15 @@ Built 2026-10-15 · window 2001-01 – 2026-08 (308 months) · all returns month
 - ✅ **CASH_EUR: no gaps in window** — 2001-01..2026-08, missing 0 []
 - ✅ **CASH_EUR: no implausible monthly moves (>1%)** — flagged []
 - ✅ **window is current** — window ends 2026-08, 2 months before today
-- ✅ **LONG synthetic EUR/USD (CNB D-Mark x 1.95583) vs Fed, 1999-2001** — max gap 1.64% over 24 months
+- ✅ **LONG synthetic EUR/USD (CNB D-Mark x 1.95583) vs Fed, overlap** — max gap 1.64% over 24 months
 - ✅ **LONG EQ_US: French vs MSCI overlap** — corr 0.994, tracking error 1.6% p.a., mean gap +0.87pp p.a. over 308 months
 - ✅ **LONG EQ_EU: French vs MSCI overlap** — corr 0.993, tracking error 1.8% p.a., mean gap +0.95pp p.a. over 308 months
 - ✅ **LONG EQ_EM: French vs MSCI overlap** — corr 0.992, tracking error 2.3% p.a., mean gap +0.72pp p.a. over 308 months
-- ⚠️ **LONG EQ_US: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
-- ⚠️ **LONG EQ_EU: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
-- ⚠️ **LONG EQ_EM: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
-- ⚠️ **LONG GOLD: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
-- ⚠️ **LONG BD_US10: no gaps or implausible moves** — 1991-02..2026-08, missing ['1999-01', '1999-02', '1999-03'], flagged []
+- ✅ **LONG EQ_US: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
+- ✅ **LONG EQ_EU: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
+- ✅ **LONG EQ_EM: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
+- ✅ **LONG GOLD: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
+- ✅ **LONG BD_US10: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
 - ✅ **LONG BD_DE10: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
 - ✅ **LONG CASH_EUR: no gaps or implausible moves** — 1991-02..2026-08, missing [], flagged []
 - ✅ **LONG long window start** — starts 1991-02 (must start by 1992-01), 427 months
