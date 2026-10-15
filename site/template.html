@@ -252,13 +252,13 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
 
 <div class="wrap top">
   <div>
-    <div class="eyebrow">Modern Portfolio Theory · EUR investor · <span id="ver">v0.2</span></div>
+    <div class="eyebrow">Modern Portfolio Theory · EUR investor · <span id="ver">v0.3</span></div>
     <h1>MPT Portfolio Simulator</h1>
   </div>
   <div class="meta" id="top-meta"></div>
 </div>
 <nav class="wrap jump" aria-label="Sections">
-  <a href="#builder-panel">Portfolio</a><a href="#front-panel">Frontier</a><a href="#rec-panel">Recommendations</a><a href="#risk-panel">Risk</a><a href="#hist-panel">History</a><a href="#about">Data</a>
+  <a href="#builder-panel">Portfolio</a><a href="#front-panel">Frontier</a><a href="#rec-panel">Recommendations</a><a href="#risk-panel">Risk</a><a href="#hist-panel">History</a><a href="#robust-panel">Robustness</a><a href="#about">Data</a>
 </nav>
 
 <div class="band">
@@ -294,6 +294,8 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
     <div class="assume">
       <div class="eyebrow">Assumptions</div>
       <div class="field"><label for="in-basis">Estimation basis <small id="basis-hint">How μ, σ and correlations are estimated from the monthly history</small></label><select id="in-basis"></select></div>
+      <div class="field"><label for="in-shrink">Correlations <small id="shrink-hint">Ledoit-Wolf pulls each correlation towards the average one</small></label><select id="in-shrink"><option value="0">Sample</option><option value="1">Ledoit-Wolf shrunk</option></select></div>
+      <div class="alert" id="basis-note" hidden></div>
       <div class="field"><label for="in-rf">Risk-free rate <small id="rf-hint">Default: EUR cash mean on the estimation basis (D5)</small></label><span class="num"><input id="in-rf" type="number" step="0.01" inputmode="decimal">%</span></div>
       <div class="field"><label for="in-infl">Inflation <small>Used only for the real-return tile (D8)</small></label><span class="num"><input id="in-infl" type="number" step="0.1" inputmode="decimal">%</span></div>
       <div class="field"><label for="in-cap">Max weight per asset <small>Applies to frontier and recommendations (D6)</small></label><span class="num"><input id="in-cap" type="number" step="5" min="5" max="100" inputmode="decimal">%</span></div>
@@ -306,6 +308,20 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
         <div class="scroll"><table class="ctab" id="class-cons"></table></div>
         <div class="scroll"><table class="ctab" id="asset-cons"></table></div>
         <div><button class="btn sm" id="btn-cons-clear" type="button">Clear all bounds</button></div>
+      </div>
+    </details>
+    <details class="sub" id="up-box">
+      <summary><span class="eyebrow">Add your own assets (CSV)</span><span class="hint" id="up-sum">none added</span></summary>
+      <div class="inner">
+        <p class="hint" style="margin:0">One date column, then one column per asset: monthly or daily prices, or monthly returns, <b>already in EUR</b>. Dates as YYYY-MM, YYYY-MM-DD or DD.MM.YYYY; comma, semicolon or tab separated. At least 36 months. Uploads stay in this browser only.</p>
+        <div class="field"><label for="up-file">File</label><input type="file" id="up-file" accept=".csv,.txt,text/csv,text/plain" style="max-width:220px; font-size:12px"></div>
+        <label for="up-text" class="hint">…or paste the data</label>
+        <textarea id="up-text" rows="4" spellcheck="false" style="width:100%; font-family:var(--font-mono); font-size:12px; padding:6px; border:1px solid var(--line); border-radius:4px; background:var(--surface); color:var(--ink)" placeholder="date,My fund&#10;2015-01,0.012&#10;2015-02,-0.034&#10;..."></textarea>
+        <div class="field"><label for="up-kind">The numbers are</label><select id="up-kind"><option value="auto">Detect automatically</option><option value="levels">Prices / index levels</option><option value="returns">Returns as decimals (0.012)</option><option value="pct">Returns in percent (1.2)</option></select></div>
+        <div class="field"><label for="up-class">Asset class</label><select id="up-class"></select></div>
+        <div class="alert" id="up-msg" hidden></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap"><button class="btn primary sm" id="up-add" type="button" disabled>Add to the universe</button><button class="btn sm" id="up-clear" type="button">Clear</button></div>
+        <div id="up-list" class="checks"></div>
       </div>
     </details>
   </section>
@@ -373,6 +389,18 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
   </section>
 </div>
 
+<div class="wrap" style="padding-block:12px 0">
+  <section class="panel" id="robust-panel" aria-labelledby="h-rob">
+    <header><h2 id="h-rob">Robustness: does the optimum survive a change of period?</h2><span class="hint" id="rob-scope"></span></header>
+    <p class="pos" style="padding-top:0" id="rob-text"></p>
+    <div class="grid2" style="padding:0 14px 14px" id="rob-dirs"></div>
+    <div class="body">
+      <h3 style="margin-bottom:6px">Asset estimates by sub-period</h3>
+      <div class="scroll"><table id="rob-assets"></table></div>
+    </div>
+  </section>
+</div>
+
 <div class="wrap">
   <details class="panel about" id="about">
     <summary><h2>About the data</h2><span class="muted" style="font-size:12px" id="about-sum"></span></summary>
@@ -406,6 +434,11 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
         <div class="alert" id="psd-alert" hidden></div>
         <div class="scroll" style="margin-top:6px"><table class="heat" id="corr-table"></table></div>
       </div>
+      <div id="long-box" hidden>
+        <h3 style="margin-bottom:6px">Optional long window</h3>
+        <p class="muted" style="margin:0 0 6px; font-size:12.5px" id="long-note"></p>
+        <div class="scroll"><table id="long-table"></table></div>
+      </div>
       <div>
         <h3 style="margin-bottom:6px">Pipeline checks</h3>
         <div class="checks" id="checks"></div>
@@ -427,7 +460,7 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
 // Embedded at build time from ladastary/mpt-data/data/latest.json by site/build_page.py. Do not edit by hand.
 const DATA = /*__DATA_START__*/null/*__DATA_END__*/;
 const PAGE_BUILT = "__PAGE_BUILT__";
-const PAGE_VERSION = "v0.2";
+const PAGE_VERSION = "v0.3";
 // ===== END DATA =====
 
 // ===== MATH =====
@@ -767,8 +800,133 @@ const M = (() => {
     return { windows: wins, mu, vol, C };
   }
 
+  // Ledoit-Wolf (2004) shrinkage of the sample covariance towards the constant-correlation target.
+  // The target keeps each variance, so in correlation terms: C* = delta * rbar + (1 - delta) * C off the diagonal.
+  function ledoitWolf(series) {
+    const n = series.length, T = series[0].length;
+    const X = series.map(r => { const m = sum(r) / T; return r.map(x => x - m); });
+    const S = X.map(a => X.map(b => dot(a, b) / T));
+    const sd = S.map((r, i) => Math.sqrt(r[i]));
+    let rbar = 0; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) rbar += S[i][j] / (sd[i] * sd[j]);
+    rbar = n > 1 ? 2 * rbar / (n * (n - 1)) : 0;
+    let piSum = 0, rho = 0, gamma = 0;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      let p = 0; for (let t = 0; t < T; t++) { const d = X[i][t] * X[j][t] - S[i][j]; p += d * d; }
+      piSum += p / T;
+      const F = i === j ? S[i][i] : rbar * sd[i] * sd[j];
+      gamma += (F - S[i][j]) * (F - S[i][j]);
+      if (i === j) rho += p / T;
+      else {
+        let tii = 0, tjj = 0;
+        for (let t = 0; t < T; t++) { const c = X[i][t] * X[j][t] - S[i][j]; tii += (X[i][t] * X[i][t] - S[i][i]) * c; tjj += (X[j][t] * X[j][t] - S[j][j]) * c; }
+        rho += rbar / 2 * (Math.sqrt(S[j][j] / S[i][i]) * tii / T + Math.sqrt(S[i][i] / S[j][j]) * tjj / T);
+      }
+    }
+    const delta = gamma > 1e-30 ? clamp((piSum - rho) / gamma / T, 0, 1) : 1;
+    const C = S.map((r, i) => r.map((x, j) => (i === j ? 1 : delta * rbar + (1 - delta) * x / (sd[i] * sd[j]))));
+    return { C, delta, rbar };
+  }
+  // Single-window estimate with optional shrinkage of the correlations.
+  function estimateW(series, shrink) {
+    const e = estimate(series);
+    if (!shrink || series.length < 3) return { ...e, delta: 0 };
+    const lw = ledoitWolf(series);
+    return { ...e, C: lw.C, delta: lw.delta };
+  }
+  // Rolling windows with optional shrinkage inside each window.
+  function rollingW(series, W, step, shrink) {
+    const r = rolling(series, W, step);
+    if (!shrink) return { ...r, delta: 0 };
+    const n = series.length, C = Array.from({ length: n }, () => new Array(n).fill(0));
+    let dsum = 0;
+    for (const w of r.windows) {
+      const lw = ledoitWolf(series.map(x => x.slice(w.start, w.end + 1)));
+      w.Cs = lw.C; w.delta = lw.delta; dsum += lw.delta;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) C[i][j] += lw.C[i][j] / r.windows.length;
+    }
+    for (let i = 0; i < n; i++) C[i][i] = 1;
+    return { ...r, C, delta: dsum / r.windows.length };
+  }
+  // Pairwise estimate for a series with gaps (null) against complete series: overlap months only.
+  function pairwise(x, y) {
+    const a = [], b = [];
+    for (let t = 0; t < x.length; t++) if (x[t] != null && y[t] != null) { a.push(x[t]); b.push(y[t]); }
+    return { n: a.length, c: a.length > 2 ? corr(a, b) : 0 };
+  }
+
+  // Parse a pasted or uploaded CSV of monthly (or daily) data into monthly returns per column.
+  // kind: "auto" | "returns" (decimals) | "pct" (percent) | "levels" (prices / index levels).
+  function parseSeries(text, kind) {
+    const lines = String(text || "").replace(/\r/g, "").split("\n").map(l => l.trim()).filter(l => l && !/^#/.test(l));
+    if (lines.length < 3) return { error: "Need a header or at least three rows of date,value." };
+    const cnt = ch => (lines[0].match(new RegExp("\\" + ch, "g")) || []).length;
+    const delim = cnt("\t") ? "\t" : cnt(";") ? ";" : ",";
+    const commaDec = delim !== ",";
+    const split = l => l.split(delim).map(s => s.trim().replace(/^"|"$/g, ""));
+    const pDate = s => {
+      let m;
+      if ((m = /^(\d{4})[-/.](\d{1,2})(?:[-/.](\d{1,2}))?(?:[ T].*)?$/.exec(s))) return [+m[1], +m[2], m[3] ? +m[3] : 28];
+      if ((m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s))) return [+m[3], +m[2], +m[1]];
+      if ((m = /^(\d{1,2})\/(\d{4})$/.exec(s))) return [+m[2], +m[1], 28];
+      if ((m = /^(\d{4})(\d{2})$/.exec(s))) return [+m[1], +m[2], 28];
+      return null;
+    };
+    const pNum = s => {
+      if (s == null) return null;
+      let t = s.replace(/\s/g, "").replace("%", "");
+      if (commaDec && t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+      if (t === "" || t === "-" || /^n\/?a$/i.test(t)) return null;
+      const v = Number(t); return isFinite(v) ? v : NaN;
+    };
+    let rows = lines.map(split), header = null;
+    if (!pDate(rows[0][0])) { header = rows[0]; rows = rows.slice(1); }
+    const ncol = Math.max(...rows.map(r => r.length)) - 1;
+    if (ncol < 1) return { error: "Each row needs a date and at least one value." };
+    const hasPct = lines.slice(1).some(l => l.includes("%"));
+    const parsed = [];
+    for (const r of rows) {
+      const d = pDate(r[0]);
+      if (!d) return { error: `Unreadable date "${r[0]}". Use YYYY-MM, YYYY-MM-DD or DD.MM.YYYY.` };
+      if (d[1] < 1 || d[1] > 12) return { error: `Month out of range in "${r[0]}".` };
+      parsed.push({ key: d[0] * 10000 + d[1] * 100 + d[2], ym: `${d[0]}-${String(d[1]).padStart(2, "0")}`, v: r.slice(1).map(pNum) });
+    }
+    parsed.sort((a, b) => a.key - b.key);
+    const cols = [];
+    for (let c = 0; c < ncol; c++) {
+      const obs = parsed.map(p => ({ ym: p.ym, v: p.v[c] })).filter(o => o.v != null);
+      const bad = obs.find(o => isNaN(o.v));
+      const name = (header && header[c + 1]) || `Series ${c + 1}`;
+      if (bad) return { error: `Column "${name}": unreadable number in ${bad.ym}.` };
+      if (obs.length < 3) return { error: `Column "${name}" has fewer than three values.` };
+      const perMonth = {};
+      obs.forEach(o => { (perMonth[o.ym] = perMonth[o.ym] || []).push(o.v); });
+      const months = Object.keys(perMonth).sort();
+      const vals = obs.map(o => o.v).slice().sort((a, b) => a - b), med = vals[Math.floor(vals.length / 2)];
+      const absv = vals.map(Math.abs).sort((a, b) => a - b), p95 = absv[Math.floor(absv.length * 0.95)];
+      let k = kind && kind !== "auto" ? kind : hasPct ? "pct" : vals[0] > 0 && med > 2 ? "levels" : p95 > 1 ? "pct" : "returns";
+      const ret = {};
+      if (k === "levels") {
+        if (vals[0] <= 0) return { error: `Column "${name}": prices must be positive.` };
+        const last = months.map(m => perMonth[m][perMonth[m].length - 1]);
+        for (let i = 1; i < months.length; i++) ret[months[i]] = last[i] / last[i - 1] - 1;
+      } else {
+        const f = k === "pct" ? 0.01 : 1;
+        months.forEach(m => { ret[m] = perMonth[m].reduce((g, x) => g * (1 + x * f), 1) - 1; });
+      }
+      const ms = Object.keys(ret).sort();
+      for (let i = 1; i < ms.length; i++) {
+        const [y0, m0] = ms[i - 1].split("-").map(Number), [y1, m1] = ms[i].split("-").map(Number);
+        if (y1 * 12 + m1 !== y0 * 12 + m0 + 1) return { error: `Column "${name}": no data between ${ms[i - 1]} and ${ms[i]}. Monthly data must be continuous.` };
+      }
+      const big = ms.find(m => Math.abs(ret[m]) > 0.6);
+      cols.push({ name, kind: k, dates: ms, values: ms.map(m => ret[m]), warn: big ? `a monthly move of ${(ret[big] * 100).toFixed(0)}% in ${big}: check the series type` : null });
+    }
+    return { cols };
+  }
+
   return { dot, matVec, sum, clamp, covariance, stats, lamFor, project, projectGroups, makeProj, feasible, maxEig, solveMV, frontier, maxSharpe,
-    frontierTarget, retAtVol, volAtRet, riskContrib, backtest, jacobi, psdRepair, annualise, corr, estimate, rolling };
+    frontierTarget, retAtVol, volAtRet, riskContrib, backtest, jacobi, psdRepair, annualise, corr, estimate, rolling,
+    ledoitWolf, estimateW, rollingW, pairwise, parseSeries };
 })();
 // ===== END MATH =====
 
@@ -783,17 +941,66 @@ const CLASSES = DATA.classes.slice();
 const CLASS_PROXY = { EQ: ["EQ_WLD", "EQ_US"], BD: ["BD_DE10"], CM: ["GOLD"], CA: ["CASH_EUR"] };
 const CASH_ID = "CASH_EUR";
 // Estimation bases (D2/D3). Default: average of rolling 10-year windows stepped yearly, anchored at the latest month.
+// Other bases: one full-history window, the two halves of it (sub-periods), and the optional long window from ~1991.
 const ROLL_W = 120, ROLL_STEP = 12;
-let ROLL = null, BASES = {}, HIST = null;
-function makeBases() {
-  const R = U.map(a => DATA.monthly.returns[a.id]);
-  ROLL = M.rolling(R, ROLL_W, ROLL_STEP);
-  const full = M.estimate(R);
-  BASES = {
-    roll10: { id: "roll10", short: `10-year rolling, average of ${ROLL.windows.length}`, mu: ROLL.mu, vol: ROLL.vol, C: ROLL.C, avail: U.map(() => true) },
-    full: { id: "full", short: `Single ${(DATA.settings.window.months / 12).toFixed(1)}-year window`, mu: full.mu, vol: full.vol, C: full.C, avail: U.map(() => true) }
-  };
+const LONG = DATA.long && DATA.long.dates && DATA.long.dates.length ? DATA.long : null;
+let ROLL = null, BASES = {}, HIST = null, SHRINK = false;
+const GRIDS = { main: DATA.monthly.dates, long: LONG ? LONG.dates : [] };
+// Monthly returns of asset a on a slice of a date grid; null entries where the asset has no data, null if none at all.
+function seriesOn(a, src, from, to) {
+  const dates = GRIDS[src].slice(from, to);
+  if (a.builtin) {
+    const r = src === "main" ? DATA.monthly.returns[a.id] : LONG && LONG.returns[a.id];
+    return r ? r.slice(from, to) : null;
+  }
+  if (a.upload) { const m = a.upload.map, x = dates.map(d => (d in m ? m[d] : null)); return x.some(v => v != null) ? x : null; }
+  return null;
 }
+function basisFrom(id, short, src, from, to, method) {
+  const dates = GRIDS[src].slice(from, to), n = N;
+  const R = U.map(a => seriesOn(a, src, from, to));
+  const complete = R.map(r => !!r && r.every(x => x != null));
+  const cidx = []; complete.forEach((c, i) => { if (c) cidx.push(i); });
+  const est = method === "roll" ? M.rollingW(cidx.map(i => R[i]), ROLL_W, ROLL_STEP, SHRINK) : M.estimateW(cidx.map(i => R[i]), SHRINK);
+  const expand = v => { const f = new Array(n).fill(NaN); cidx.forEach((i, k) => { f[i] = v[k]; }); return f; };
+  const mu = expand(est.mu), vol = expand(est.vol), avail = complete.slice(), note = {};
+  const C = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+  cidx.forEach((i, k) => cidx.forEach((j, l) => { C[i][j] = est.C[k][l]; }));
+  if (est.windows) est.windows.forEach(w => { w.mu = expand(w.mu); w.vol = expand(w.vol); });
+  // Uploaded series that do not cover the whole basis: own months for mu/sigma, overlapping months for correlations.
+  let partial = false, repaired = 0;
+  U.forEach((a, i) => {
+    if (complete[i] || !R[i]) return;
+    const xs = R[i].filter(x => x != null); if (xs.length < 36) return;
+    const st = M.annualise(xs); mu[i] = st.mu; vol[i] = st.vol; avail[i] = true; partial = true;
+    note[i] = `${xs.length} of ${dates.length} months`;
+  });
+  if (partial) {
+    U.forEach((a, i) => { if (!avail[i] || complete[i]) return; U.forEach((b, j) => { if (j === i || !avail[j] || !R[j]) return; const p = M.pairwise(R[i], R[j]); if (p.n >= 24) { C[i][j] = p.c; C[j][i] = p.c; } }); });
+    const ai = []; avail.forEach((v, i) => { if (v) ai.push(i); });
+    const r = M.psdRepair(ai.map(i => ai.map(j => C[i][j])));
+    if (r.repaired) { ai.forEach((i, k) => ai.forEach((j, l) => { C[i][j] = r.C[k][l]; })); repaired = r.maxChange; }
+  }
+  return { id, short: short + (SHRINK ? " · shrunk" : ""), src, from, to, dates, mu, vol, C, avail, note, windows: est.windows || null, delta: est.delta || 0, repaired, months: dates.length };
+}
+function makeBases() {
+  const T = GRIDS.main.length, h = Math.floor(T / 2), d = GRIDS.main;
+  BASES = {};
+  BASES.roll10 = basisFrom("roll10", "", "main", 0, T, "roll");
+  BASES.roll10.short = `10-year rolling, average of ${BASES.roll10.windows.length}` + (SHRINK ? " · shrunk" : "");
+  ROLL = BASES.roll10;
+  BASES.full = basisFrom("full", `Single ${(T / 12).toFixed(1)}-year window`, "main", 0, T, "single");
+  BASES.half1 = basisFrom("half1", `First half, ${ym(d[0])} – ${ym(d[h - 1])}`, "main", 0, h, "single");
+  BASES.half2 = basisFrom("half2", `Second half, ${ym(d[h])} – ${ym(d[T - 1])}`, "main", h, T, "single");
+  if (LONG) {
+    const L = GRIDS.long.length;
+    BASES.long = basisFrom("long", `Long window ${ym(GRIDS.long[0])} – ${ym(GRIDS.long[L - 1])}`, "long", 0, L, "single");
+    BASES.long10 = basisFrom("long10", "", "long", 0, L, "roll");
+    BASES.long10.short = `Long window, 10-year rolling (average of ${BASES.long10.windows.length})` + (SHRINK ? " · shrunk" : "");
+  }
+}
+const MON0 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function ym(s) { const [y, m] = s.split("-").map(Number); return MON0[m - 1] + " " + y; }
 makeBases();
 HIST = BASES.roll10;
 
@@ -847,7 +1054,12 @@ function setWeight(i, v) {
 function toggleInclude(i, on) {
   if (!selectable(i)) return;
   if (on) { STATE.incl[i] = true; STATE.w[i] = 0; return; }
+  dropAsset(i);
+}
+// Exclude asset i; its weight goes to `to` if given, otherwise pro rata to the other unlocked selected assets.
+function dropAsset(i, to) {
   const freed = STATE.w[i];
+  if (to != null && to !== i) { STATE.incl[i] = false; STATE.w[i] = 0; STATE.lock[i] = false; if (!STATE.incl[to]) { STATE.incl[to] = true; STATE.w[to] = 0; } STATE.w[to] += freed; return; }
   STATE.incl[i] = false; STATE.w[i] = 0; STATE.lock[i] = false;
   const others = []; for (let j = 0; j < N; j++) if (STATE.incl[j] && !STATE.lock[j]) others.push(j);
   const pool = others.length ? others : STATE.incl.map((v, j) => (v ? j : -1)).filter(j => j >= 0);
@@ -886,6 +1098,39 @@ function setMode(mode) {
     U.forEach((a, i) => { if (!CLASS_PROXY[a.class] && snap.incl[i]) incl[i] = true; });  // classes without proxy (uploads) stay off in class mode
     STATE.mode = "asset"; STATE.incl = incl; STATE.w = w; STATE.lock.fill(false);
   }
+}
+
+// Uploaded assets (v0.3). Kept in this viewer's browser only (localStorage); never sent anywhere.
+const UP_KEY = "mpt-uploads-v1";
+let upSeq = 0;
+function addUpload(col, cls, name, file) {
+  if (!CLASSES.some(c => c.id === cls)) CLASSES.push({ id: "UP", name: "Your uploads" });
+  const id = "UP_" + (++upSeq), map = {};
+  col.dates.forEach((d, k) => { map[d] = col.values[k]; });
+  const bt = M.backtest([col.values], [1]);
+  U.push({ id, name: name || col.name, class: cls, builtin: false, defaultOn: true, upload: { map, kind: col.kind, file: file || "pasted text", dates: col.dates, values: col.values },
+    proxy: "–", ter: 0, income: null, cagr: bt.cagr, maxDD: bt.maxDD, worst12m: bt.worst12,
+    source: `Your upload (${file || "pasted text"}), ${{ returns: "monthly returns", pct: "monthly returns in %", levels: "prices / levels" }[col.kind]}; taken as EUR`, seriesType: "uploaded",
+    window: { start: col.dates[0], end: col.dates[col.dates.length - 1], months: col.dates.length }, retrieved: new Date().toISOString().slice(0, 10) });
+  STATE.incl.push(false); STATE.w.push(0); STATE.lock.push(false); STATE.amin.push(0); STATE.amax.push(1);
+  reindex();
+  return N - 1;
+}
+function removeUpload(i) {
+  if (U[i].builtin) return;
+  if (STATE.incl[i]) dropAsset(i);
+  for (const k of ["incl", "w", "lock", "amin", "amax"]) STATE[k].splice(i, 1);
+  U.splice(i, 1); reindex(); assetSnap = null;
+  if (!U.some(a => a.class === "UP")) { const k = CLASSES.findIndex(c => c.id === "UP"); if (k >= 0) CLASSES.splice(k, 1); }
+}
+function saveUploads() {
+  try { localStorage.setItem(UP_KEY, JSON.stringify(U.filter(a => a.upload).map(a => ({ name: a.name, class: a.class, kind: a.upload.kind, file: a.upload.file, dates: a.upload.dates, values: a.upload.values })))); } catch (e) { /* storage unavailable */ }
+}
+function loadUploads() {
+  try {
+    const x = JSON.parse(localStorage.getItem(UP_KEY) || "[]");
+    if (Array.isArray(x)) x.forEach(u => { if (u && Array.isArray(u.dates) && Array.isArray(u.values) && u.dates.length === u.values.length) addUpload({ name: u.name, kind: u.kind, dates: u.dates, values: u.values }, u.class, u.name, u.file); });
+  } catch (e) { /* storage unavailable or corrupt */ }
 }
 
 // Hash: "#p" + basis points per asset in DATA order, "x" = excluded. Only letters/digits/-/. survive artifact links.
@@ -962,6 +1207,39 @@ function breaches() {
   }
   return { out, rows };
 }
+
+// Robustness (v0.3): fit max-Sharpe on one half of the history, then measure it on the other half.
+let ROBUST = null;
+function realised(R, w, rf) {
+  const T = R[0].length, r = new Array(T).fill(0);
+  for (let i = 0; i < R.length; i++) for (let t = 0; t < T; t++) r[t] += w[i] * R[i][t];
+  const a = M.annualise(r), bt = M.backtest([r], [1]);
+  return { ret: a.mu, vol: a.vol, sharpe: a.vol > 0 ? (a.mu - rf) / a.vol : NaN, maxDD: bt.maxDD, cagr: bt.cagr };
+}
+function buildRobust() {
+  const key = JSON.stringify([STATE.incl, STATE.w, STATE.cap, STATE.amin, STATE.amax, STATE.cmin, STATE.cmax, SHRINK, N]);
+  if (ROBUST && ROBUST.key === key) return ROBUST;
+  const H = [BASES.half1, BASES.half2];
+  const sub = []; for (let i = 0; i < N; i++) if (STATE.incl[i] && H.every(b => b.avail[i] && !b.note[i])) sub.push(i);
+  const res = { key, sub, dirs: [] };
+  if (sub.length < 2) { ROBUST = res; return res; }
+  const cs = constraintSet(sub);
+  const ci = IDX[CASH_ID];
+  const rfOf = b => (ci != null && isFinite(b.mu[ci]) ? b.mu[ci] : STATE.rf);
+  const ser = b => sub.map(i => seriesOn(U[i], b.src, b.from, b.to));
+  const ys = STATE.w.map((w, i) => (STATE.incl[i] ? w : 0)), ysum = M.sum(sub.map(i => ys[i]));
+  const yours = sub.map(i => (ysum > 0 ? ys[i] / ysum : 1 / sub.length)), eq = sub.map(() => 1 / sub.length);
+  for (const [fit, test] of [[H[0], H[1]], [H[1], H[0]]]) {
+    const mu = sub.map(i => fit.mu[i] - (U[i].ter || 0)), S = M.covariance(sub.map(i => fit.vol[i]), sub.map(i => sub.map(j => fit.C[i][j])));
+    const pts = M.frontier(mu, S, cs.lo, cs.hi, cs.P), ms = M.maxSharpe(mu, S, cs.lo, cs.hi, rfOf(fit), pts, cs.P);
+    const R = ser(test), rf = rfOf(test);
+    res.dirs.push({ fit, test, w: ms.w, predicted: ms, rows: [
+      { label: `Max-Sharpe fitted on the ${fit.id === "half1" ? "first" : "second"} half`, ...realised(R, ms.w, rf), pred: ms.sharpe },
+      { label: "Equal weight", ...realised(R, eq, rf) },
+      { label: "Your portfolio (same selection)", ...realised(R, yours, rf) }] });
+  }
+  ROBUST = res; return res;
+}
 // ===== END STATE =====
 
 // ===== UI =====
@@ -975,8 +1253,6 @@ const css = name => getComputedStyle(document.documentElement).getPropertyValue(
 const pct = (x, d = 1) => (x == null || !isFinite(x) ? "–" : (x * 100).toFixed(d) + "%");
 const pp = (x, d = 1) => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(d) + "pp";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const ym = s => { const [y, m] = s.split("-").map(Number); return MON[m - 1] + " " + y; };
 const prevMonth = s => { const [y, m] = s.split("-").map(Number); const t = y * 12 + m - 2; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, "0")}`; };
 const plainName = a => a.name.replace(/\s*\(.*\)\s*$/, "");
 const indexName = a => (/\((.*)\)/.exec(a.name) || [, ""])[1];
@@ -988,8 +1264,8 @@ const UNLOCK_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" s
 function rowHTML(i, label, sub) {
   const a = U[i], nm = label || plainName(a);
   const flag = a.id === "GOLD" ? '<span class="flag" title="Monthly-average prices understate gold volatility by roughly 15–20% (D12)">σ understated</span>' : "";
-  const tag = a.defaultOn || label ? "" : '<span class="tag">optional</span>';
-  const na = avail(i) ? "" : '<span class="tag">no data on this basis</span>';
+  const tag = label ? "" : a.upload ? '<span class="tag">upload</span>' : a.defaultOn ? "" : '<span class="tag">optional</span>';
+  const na = !avail(i) ? '<span class="tag">no data on this basis</span>' : HIST.note[i] ? `<span class="tag" title="Estimated on its own months; correlations on overlapping months">${esc(HIST.note[i])}</span>` : "";
   return `<div class="row" id="row-${i}" data-i="${i}">
     <label class="pick" for="inc-${i}"><input type="checkbox" id="inc-${i}" data-i="${i}" data-act="inc"><span class="sw" style="--c:${label ? classColorVar(a.class) : colorVar(a.id)}"></span>
       <span class="nm"><b>${esc(nm)}${tag}${na}</b><small>μ <span id="mu-${i}"></span> · σ <span id="vol-${i}"></span>${flag} · ${esc(sub || indexName(a) || a.proxy || "")}</small></span></label>
@@ -1313,16 +1589,25 @@ function renderRisk(m) {
 
 // Historical check: growth of 10,000 EUR, monthly rebalanced to fixed weights.
 let hchart = null, ddchart = null;
-function histSeries() { return { dates: DATA.monthly.dates, R: U.map(a => DATA.monthly.returns[a.id]) }; }
+// History runs on the active grid (main or long window), over the months every selected asset has.
+function histSeries(sub) {
+  const src = HIST.src, G = GRIDS[src];
+  const R = U.map(a => seriesOn(a, src, 0, G.length));
+  let s = 0, e = G.length - 1;
+  for (const i of sub) { const r = R[i]; if (!r) continue; let a = 0; while (a < r.length && r[a] == null) a++; let b = r.length - 1; while (b >= 0 && r[b] == null) b--; s = Math.max(s, a); e = Math.min(e, b); }
+  return { dates: G.slice(s, e + 1), R: R.map(r => (r ? r.slice(s, e + 1).map(x => (x == null ? 0 : x)) : new Array(e - s + 1).fill(0))), cut: s > 0 || e < G.length - 1 };
+}
 function renderHistory(m) {
-  const { dates, R } = histSeries();
   if (!m.sub.length) { $("hist-text").textContent = "Select at least one asset."; return; }
+  const { dates, R, cut } = histSeries(m.sub);
+  if (dates.length < 13) { $("hist-text").textContent = "The selected assets share fewer than 13 months of history."; return; }
   const run = wf => M.backtest(R, wf, 0);
   const you = run(STATE.w.map((w, i) => (STATE.incl[i] ? w : 0)));
   const ms = m.ms ? run(m.ms.wf) : null, mv = m.mv ? run(m.mv.wf) : null;
   const labels = [prevMonth(dates[0])].concat(dates);
   const d = i => (i >= 0 && i < dates.length ? ym(dates[i]) : "–");
-  $("hist-text").innerHTML = `€10,000 invested at the end of ${ym(labels[0])}, rebalanced monthly to today's weights. The max-Sharpe and min-vol lines use weights fitted on this same history, so they look better than anyone could have achieved in real time.`;
+  const G = GRIDS[HIST.src], endTxt = dates[dates.length - 1] !== G[G.length - 1] ? " to " + ym(dates[dates.length - 1]) : "";
+  $("hist-text").innerHTML = `€10,000 invested at the end of ${ym(labels[0])}${cut ? ` (the selected assets share data only from this month${endTxt})` : ""}${HIST.src === "long" ? " on the long window" : ""}, rebalanced monthly to today's weights. The max-Sharpe and min-vol lines use weights fitted on this same history, so they look better than anyone could have achieved in real time.`;
   const st = [
     ["Final value", eur(10000 * you.final)], ["CAGR", pct(you.cagr, 2)], ["Realised σ", pct(you.vol, 2)],
     ["Max drawdown", `${pct(you.maxDD)} <small class="muted">${d(you.ddPeak)}–${d(you.ddTrough)}</small>`],
@@ -1387,15 +1672,26 @@ function buildAbout() {
     + `<details><summary style="cursor:pointer; color:var(--ink-2)">Show all ${hc.length} checks</summary><div class="checks" style="margin-top:6px">`
     + hc.map(c => `<div><span class="${c.ok ? "ok" : c.hard ? "fail" : "soft"}">${c.ok ? "✓" : c.hard ? "✗" : "!"}</span> ${esc(c.check)} <span class="muted">· ${esc(c.detail)}</span></div>`).join("")
     + "</div></details>";
-  buildStatsTable(); buildCorrTable(); buildRollTable();
+  buildStatsTable(); buildCorrTable(); buildRollTable(); buildLongBox();
+}
+function buildLongBox() {
+  $("long-box").hidden = !LONG; if (!LONG) return;
+  $("long-note").textContent = `${ym(LONG.window.start)} – ${ym(LONG.window.end)}, ${LONG.window.months} months, for ${LONG.assets.length} assets (no Czech bonds, World or Germany: no history before 2000/2001). Before ${ym(DATA.settings.window.start)} equities are Kenneth French market returns (gross dividends, includes small caps), which ran about 0.7–1pp a year above MSCI in the overlap. ${LONG.fx}.`;
+  const sp = LONG.splice || {};
+  $("long-table").innerHTML = "<thead><tr><th>Asset</th><th class='n'>μ long</th><th class='n'>σ long</th><th class='n'>μ main</th><th class='n'>Overlap corr.</th><th class='n'>Tracking error</th><th class='n'>Mean gap</th><th>Before the main window</th></tr></thead><tbody>"
+    + LONG.assets.map(id => { const a = M.annualise(LONG.returns[id]), b = M.annualise(DATA.monthly.returns[id]), x = sp[id];
+      return `<tr><td>${esc(SHORT[id] || id)}</td><td class="n mono">${pct(a.mu)}</td><td class="n mono">${pct(a.vol)}</td><td class="n mono">${pct(b.mu)}</td><td class="n mono">${x ? x.corr.toFixed(3) : "–"}</td><td class="n mono">${x ? pct(x.te) : "–"}</td><td class="n mono">${x ? pp(x.meanGap, 2) : "–"}</td><td class="wrapc">${esc(LONG.sources[id] || "")}</td></tr>`; }).join("") + "</tbody>";
 }
 function buildFacts() {
   const st = DATA.settings, nW = ROLL.windows.length;
-  const method = STATE.basis === "roll10"
-    ? `Average of ${nW} rolling 10-year windows stepped yearly (${winLabel(ROLL.windows[0])} … ${winLabel(ROLL.windows[nW - 1])}). In each window μ = mean × 12, σ = sample stdev × √12, correlation from monthly EUR returns; then the ${nW} values are averaged.`
-    : "One window over the full history: μ = mean × 12; σ = sample stdev × √12; correlations from monthly EUR returns.";
+  const H = HIST, wl = w => `${ym(H.dates[w.start])}–${ym(H.dates[w.end])}`;
+  const method = (H.windows
+    ? `Average of ${H.windows.length} rolling 10-year windows stepped yearly (${wl(H.windows[0])} … ${wl(H.windows[H.windows.length - 1])}). In each window μ = mean × 12, σ = sample stdev × √12, correlation from monthly EUR returns; then the values are averaged.`
+    : `One window, ${ym(H.dates[0])} – ${ym(H.dates[H.dates.length - 1])} (${H.months} months): μ = mean × 12; σ = sample stdev × √12; correlations from monthly EUR returns.`)
+    + (SHRINK ? ` Correlations shrunk towards their average (Ledoit-Wolf constant-correlation target), intensity δ = ${H.delta.toFixed(2)}${H.windows ? " on average across windows" : ""}.` : "")
+    + (H.repaired ? ` Uploaded series with partial history made the matrix non-PSD; repaired (largest change ${H.repaired.toFixed(3)}).` : "");
   $("facts").innerHTML = [
-    ["History", `${ym(st.window.start)} – ${ym(st.window.end)} (${st.window.months} complete months)`],
+    ["History", `${ym(st.window.start)} – ${ym(st.window.end)} (${st.window.months} complete months)` + (LONG ? `; optional long window from ${ym(LONG.window.start)} (${LONG.window.months} months)` : "")],
     ["Estimation basis", method],
     ["Currency and returns", `${st.baseCurrency}, unhedged, ${st.returnBasis} monthly total returns`],
     ["FX conversion", st.fx],
@@ -1437,8 +1733,9 @@ function buildStatsTable() {
 function syncStatsTable() {
   U.forEach((a, i) => {
     const mu = $("ed-mu-" + i), vo = $("ed-vol-" + i); if (!mu) return;
-    if (document.activeElement !== mu) mu.value = (STATE.muRaw[i] * 100).toFixed(2);
-    if (document.activeElement !== vo) vo.value = (STATE.vol[i] * 100).toFixed(2);
+    const ok = isFinite(STATE.muRaw[i]); mu.disabled = vo.disabled = !ok;
+    if (document.activeElement !== mu) mu.value = ok ? (STATE.muRaw[i] * 100).toFixed(2) : "";
+    if (document.activeElement !== vo) vo.value = ok ? (STATE.vol[i] * 100).toFixed(2) : "";
     mu.classList.toggle("changed", Math.abs(STATE.muRaw[i] - HIST.mu[i]) > 5e-7);
     vo.classList.toggle("changed", Math.abs(STATE.vol[i] - HIST.vol[i]) > 5e-7);
   });
@@ -1474,23 +1771,90 @@ function buildHeader() {
   $("foot-build").textContent = `${PAGE_VERSION} · page built ${PAGE_BUILT} · data ${st.built} from ladastary/mpt-data`;
   $("ver").textContent = PAGE_VERSION;
 }
+// Robustness panel
+function renderRobust() {
+  const r = buildRobust(), H = [BASES.half1, BASES.half2];
+  $("rob-scope").textContent = `${H[0].short} vs ${H[1].short}`;
+  if (r.sub.length < 2) { $("rob-text").textContent = "Select at least two assets with data in both halves."; $("rob-dirs").innerHTML = ""; }
+  else {
+    const d0 = r.dirs[0].rows, d1 = r.dirs[1].rows;
+    const beat = r.dirs.filter(d => d.rows[0].sharpe > d.rows[1].sharpe).length;
+    $("rob-text").innerHTML = `Each half is used once to fit the max-Sharpe portfolio (with your selection and bounds) and once to test it. Fitted on the first half, it promised a Sharpe of <b>${d0[0].pred.toFixed(2)}</b> and delivered <b>${d0[0].sharpe.toFixed(2)}</b> in the second; the reverse promised <b>${d1[0].pred.toFixed(2)}</b> and delivered <b>${d1[0].sharpe.toFixed(2)}</b>. It beat equal weight out of sample in <b>${beat} of 2</b> tests.`;
+    $("rob-dirs").innerHTML = r.dirs.map(d => {
+      const top = r.sub.map((i, k) => [i, d.w[k]]).filter(([, w]) => w >= 0.0005).sort((a, b) => b[1] - a[1]);
+      return `<div style="min-width:0"><h3 style="margin-bottom:6px">Fit ${d.fit.id === "half1" ? "1st" : "2nd"} half → test ${d.test.id === "half1" ? "1st" : "2nd"} half</h3>
+        <div class="wt" style="margin-bottom:8px">${top.map(([i, w]) => `<div class="r"><span>${esc(short(i))}</span><span class="bar"><i style="width:${(w * 100).toFixed(1)}%; background:${colorVar(U[i].id)}"></i></span><span class="p">${pct(w, 1)}</span></div>`).join("")}</div>
+        <div class="scroll"><table><thead><tr><th>Realised in the test half</th><th class="n">Return</th><th class="n">σ</th><th class="n">Sharpe</th><th class="n">Max DD</th></tr></thead><tbody>
+        ${d.rows.map((x, k) => `<tr${k === 0 ? ' style="font-weight:500"' : ""}><td>${esc(x.label)}${k === 0 ? ` <span class="muted">(promised ${x.pred.toFixed(2)})</span>` : ""}</td><td class="n mono">${pct(x.ret)}</td><td class="n mono">${pct(x.vol)}</td><td class="n mono">${x.sharpe.toFixed(2)}</td><td class="n mono">${pct(x.maxDD, 0)}</td></tr>`).join("")}
+        </tbody></table></div></div>`; }).join("");
+  }
+  const ids = U.map((a, i) => i).filter(i => STATE.incl[i] || U[i].defaultOn);
+  const cols = [BASES.half1, BASES.half2, BASES.full].concat(LONG ? [BASES.long] : []);
+  const nm = b => ({ half1: "1st half", half2: "2nd half", full: "Full", long: "Long" }[b.id]);
+  $("rob-assets").innerHTML = `<thead><tr><th>Asset</th>${cols.map(b => `<th class="n">μ ${nm(b)}</th>`).join("")}<th class="n">Δμ halves</th>${cols.map(b => `<th class="n">σ ${nm(b)}</th>`).join("")}</tr></thead><tbody>`
+    + ids.map(i => { const d = BASES.half2.mu[i] - BASES.half1.mu[i];
+      return `<tr><td><span class="sw" style="display:inline-block; margin-right:6px; --c:${colorVar(U[i].id)}"></span>${esc(short(i))}</td>${cols.map(b => `<td class="n mono">${b.avail[i] ? pct(b.mu[i]) : "–"}</td>`).join("")}<td class="n mono ${d > 0 ? "hi" : "lo"}">${isFinite(d) ? pp(d) : "–"}</td>${cols.map(b => `<td class="n mono">${b.avail[i] ? pct(b.vol[i]) : "–"}</td>`).join("")}</tr>`; }).join("") + "</tbody>";
+}
+
+// Upload box
+let upParsed = null;
+function buildUpBox() {
+  $("up-class").innerHTML = DATA.classes.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("") + '<option value="UP" selected>Your uploads (own class)</option>';
+  const ups = U.map((a, i) => i).filter(i => U[i].upload);
+  $("up-sum").textContent = ups.length ? `${ups.length} added` : "none added";
+  $("up-list").innerHTML = ups.map(i => { const a = U[i]; return `<div style="display:flex; gap:8px; align-items:baseline; flex-wrap:wrap"><b style="font-weight:500">${esc(a.name)}</b><span class="muted">${esc(className(a.class))} · ${ym(a.window.start)} – ${ym(a.window.end)} · μ ${pct(M.annualise(a.upload.values).mu)} · σ ${pct(M.annualise(a.upload.values).vol)}</span><button class="btn sm" type="button" data-rm="${i}">Remove</button></div>`; }).join("");
+}
+function previewUpload() {
+  const msg = $("up-msg"), text = $("up-text").value;
+  upParsed = null; $("up-add").disabled = true;
+  if (!text.trim()) { msg.hidden = true; return; }
+  const r = M.parseSeries(text, $("up-kind").value);
+  msg.hidden = false;
+  if (r.error) { msg.textContent = r.error; return; }
+  const short36 = r.cols.filter(c => c.dates.length < 36);
+  if (short36.length) { msg.textContent = `${short36.map(c => c.name).join(", ")}: fewer than 36 monthly returns.`; return; }
+  const kinds = { levels: "prices", returns: "decimal returns", pct: "percent returns" };
+  msg.textContent = r.cols.map(c => { const a = M.annualise(c.values); return `${c.name}: read as ${kinds[c.kind]}, ${c.dates.length} monthly returns ${ym(c.dates[0])} – ${ym(c.dates[c.dates.length - 1])}, μ ${pct(a.mu)}, σ ${pct(a.vol)}${c.warn ? "; warning: " + c.warn : ""}.`; }).join(" ");
+  upParsed = r; $("up-add").disabled = false;
+}
 // ===== END UI =====
 
 // ===== EVENTS =====
-let timer = null;
+let timer = null, upTimer = null;
 function schedule() { clearTimeout(timer); timer = setTimeout(render, 50); }
 function render() {
   const m = buildModel(), s = renderMetrics();
-  renderChart(m, s); renderPosition(m, s); renderRecs(m, s); renderRisk(m); renderHistory(m);
+  renderChart(m, s); renderPosition(m, s); renderRecs(m, s); renderRisk(m); renderHistory(m); renderRobust();
   try { history.replaceState(null, "", "#" + encodeHash()); } catch (e) { /* not available in some frames */ }
 }
 function refreshAll() { syncBuilder(); syncStatsTable(); syncCorrTable(); schedule(); }
+// Switch estimation basis. Selected assets without data on the new basis hand their weight to their
+// class proxy (e.g. World → US equities on the long window) or, failing that, to the others pro rata.
 function setBasis(b) {
+  if (!BASES[b]) b = "roll10";
   HIST = BASES[b]; STATE.basis = b;
+  const moved = [];
+  for (let i = 0; i < N; i++) if (STATE.incl[i] && !HIST.avail[i]) {
+    const p = proxyOf(U[i].class), to = p != null && p !== i ? p : null;
+    moved.push(`${short(i)} ${pct(STATE.w[i])} moved to ${to != null ? short(to) : "the other selected assets"}`);
+    dropAsset(i, to);
+  }
+  if (!STATE.incl.some(Boolean)) resetState();
   STATE.muRaw = HIST.mu.slice(); STATE.vol = HIST.vol.slice(); STATE.C = HIST.C.map(r => r.slice());
-  STATE.rf = HIST.mu[IDX[CASH_ID]]; $("in-rf").value = (STATE.rf * 100).toFixed(2);
+  STATE.rf = isFinite(HIST.mu[IDX[CASH_ID]]) ? HIST.mu[IDX[CASH_ID]] : STATE.rf; $("in-rf").value = (STATE.rf * 100).toFixed(2);
   $("psd-alert").hidden = true; $("meta-basis").textContent = HIST.short;
-  buildFacts(); refreshAll();
+  const bn = $("basis-note"); bn.hidden = !moved.length; if (moved.length) bn.textContent = "No data on this basis: " + moved.join("; ") + ".";
+  const inBasis = $("in-basis");
+  inBasis.innerHTML = Object.values(BASES).map(x => `<option value="${x.id}">${esc(x.short)}</option>`).join(""); inBasis.value = b;
+  MODEL = null; ROBUST = null;
+  buildBuilder(); buildFacts(); refreshAll();
+}
+// After uploads change the universe: rebuild bases and every table that lists assets.
+function afterUniverseChange() {
+  makeBases(); HIST = BASES[STATE.basis] || BASES.roll10;
+  STATE.muRaw = HIST.mu.slice(); STATE.vol = HIST.vol.slice(); STATE.C = HIST.C.map(r => r.slice());
+  buildCons(); buildStatsTable(); buildCorrTable(); buildUpBox(); saveUploads();
+  setBasis(STATE.basis);
 }
 function onCorrChange(i, j, raw) {
   let v = Number(raw); if (!isFinite(v)) return;
@@ -1543,6 +1907,28 @@ function wire() {
   inBasis.innerHTML = Object.values(BASES).map(b => `<option value="${b.id}">${esc(b.short)}</option>`).join("");
   inBasis.value = STATE.basis; $("meta-basis").textContent = HIST.short;
   inBasis.addEventListener("change", () => setBasis(inBasis.value));
+  $("in-shrink").addEventListener("change", e => { SHRINK = e.target.value === "1"; makeBases(); setBasis(STATE.basis); buildRollTable(); });
+  // Uploads
+  $("up-file").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    if (f.size > 5e6) { const m = $("up-msg"); m.hidden = false; m.textContent = "File is larger than 5 MB; trim it to the columns you need."; return; }
+    const rd = new FileReader(); rd.onload = () => { $("up-text").value = String(rd.result); previewUpload(); }; rd.readAsText(f);
+  });
+  $("up-text").addEventListener("input", () => { clearTimeout(upTimer); upTimer = setTimeout(previewUpload, 250); });
+  $("up-kind").addEventListener("change", previewUpload);
+  $("up-clear").addEventListener("click", () => { $("up-text").value = ""; $("up-file").value = ""; previewUpload(); });
+  $("up-add").addEventListener("click", () => {
+    if (!upParsed) return;
+    const f = $("up-file").files && $("up-file").files[0], added = [];
+    upParsed.cols.forEach(c => added.push(addUpload(c, $("up-class").value, c.name, f ? f.name : null)));
+    afterUniverseChange();
+    added.forEach(i => { if (avail(i) && STATE.mode === "asset") { STATE.incl[i] = true; STATE.w[i] = 0; } });
+    $("up-text").value = ""; $("up-file").value = ""; previewUpload();
+    const m = $("up-msg"); m.hidden = false;
+    m.textContent = added.map(i => `${U[i].name} added${avail(i) ? " with 0% weight: drag its slider" : ": it has under 36 months inside this basis, so it is listed but not usable here"}.`).join(" ");
+    syncBuilder(); schedule();
+  });
+  $("up-list").addEventListener("click", e => { const b = e.target.closest("[data-rm]"); if (!b) return; removeUpload(Number(b.dataset.rm)); afterUniverseChange(); });
   $("rv-mu").addEventListener("click", () => { rollView = "mu"; buildRollTable(); });
   $("rv-vol").addEventListener("click", () => { rollView = "vol"; buildRollTable(); });
   $("rk-asset").addEventListener("click", () => { STATE.riskView = "asset"; renderRisk(buildModel()); });
@@ -1572,7 +1958,9 @@ function wire() {
   new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 }
 function init() {
-  buildHeader(); buildBuilder(); buildCards(); buildCons(); buildAbout();
+  loadUploads();
+  if (U.some(a => a.upload)) { makeBases(); HIST = BASES.roll10; STATE.muRaw = HIST.mu.slice(); STATE.vol = HIST.vol.slice(); STATE.C = HIST.C.map(r => r.slice()); }
+  buildHeader(); buildBuilder(); buildCards(); buildCons(); buildUpBox(); buildAbout();
   if (!decodeHash(location.hash)) resetState();
   syncBuilder(); wire(); render();
 }
@@ -1741,6 +2129,51 @@ function runSelfTests(M, DATA) {
     const e = M.jacobi(r.C), mn = Math.min(...e.values), unit = r.C.every((row, i) => row[i] === 1);
     add("Rolling average μ equals window-count-weighted monthly mean", gm < 1e-12, `max gap ${gm.toExponential(1)}`);
     add("Averaged correlation matrix is PSD with unit diagonal", mn > -1e-10 && unit, `min eigenvalue ${mn.toFixed(4)}`); }
+
+  // v0.3: Ledoit-Wolf shrinkage
+  { const gauss = () => { const u = Math.max(rnd(), 1e-12), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    const sim = (T, rho) => { // rho: target correlation matrix via Cholesky
+      const n = rho.length, L = rho.map(r => r.map(() => 0));
+      for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) { let s = rho[i][j]; for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k]; L[i][j] = i === j ? Math.sqrt(s) : s / L[j][j]; }
+      const X = rho.map(() => []); for (let t = 0; t < T; t++) { const z = rho.map(gauss); for (let i = 0; i < n; i++) X[i].push(0.04 * M.dot(L[i].slice(0, i + 1), z.slice(0, i + 1))); }
+      return X; };
+    const series = DATA.assets.map(a => DATA.monthly.returns[a.id].slice(-120));
+    const lw = M.ledoitWolf(series), e = M.estimate(series);
+    let gap = 0; for (let i = 0; i < series.length; i++) for (let j = 0; j < series.length; j++) if (i !== j) gap = Math.max(gap, Math.abs(lw.C[i][j] - (lw.delta * lw.rbar + (1 - lw.delta) * e.C[i][j])));
+    const mn = Math.min(...M.jacobi(lw.C).values);
+    const het = sim(3000, [[1, 0.9, 0, 0], [0.9, 1, 0, 0], [0, 0, 1, 0.9], [0, 0, 0.9, 1]]), equi = sim(60, [[1, .3, .3, .3], [.3, 1, .3, .3], [.3, .3, 1, .3], [.3, .3, .3, 1]]);
+    const dh = M.ledoitWolf(het).delta, de = M.ledoitWolf(equi).delta;
+    add("Ledoit-Wolf: δ in [0,1], shrinks towards average correlation, PSD", lw.delta >= 0 && lw.delta <= 1 && gap < 1e-12 && mn > -1e-10, `last 120 months: δ = ${lw.delta.toFixed(3)}, r̄ = ${lw.rbar.toFixed(3)}, min eigenvalue ${mn.toFixed(4)}`);
+    add("Ledoit-Wolf: little shrinkage for distinct correlations and long samples, more for equal ones", dh < 0.05 && de > dh, `simulated: δ = ${dh.toFixed(3)} (0.9/0 blocks, 3000 months) vs ${de.toFixed(3)} (equal 0.3, 60 months)`); }
+
+  // v0.3: sub-period halves recombine into the full-window mean
+  { const T = DATA.monthly.dates.length, h = Math.floor(T / 2); let g = 0;
+    for (const a of DATA.assets) { const x = DATA.monthly.returns[a.id]; const m1 = M.annualise(x.slice(0, h)).mu, m2 = M.annualise(x.slice(h)).mu, m = M.annualise(x).mu; g = Math.max(g, Math.abs((h * m1 + (T - h) * m2) / T - m)); }
+    add("Sub-periods: the two halves recombine into the full-window mean", g < 1e-14, `halves of ${h} and ${T - h} months, max gap ${g.toExponential(1)}`); }
+
+  // v0.3: CSV parsing of uploads
+  { const t1 = M.parseSeries("date,Fund A,Fund B\n2020-01,100,50\n2020-02,110,49\n2020-03,99,51\n2020-04,104.5,50", "auto");
+    const ok1 = t1.cols && t1.cols.length === 2 && t1.cols[0].kind === "levels" && Math.abs(t1.cols[0].values[0] - 0.1) < 1e-12 && Math.abs(t1.cols[0].values[1] + 0.1) < 1e-12 && t1.cols[0].dates[0] === "2020-02" && t1.cols[1].name === "Fund B";
+    const t2 = M.parseSeries("Datum;Ret\n31.01.2020;1,5%\n29.02.2020;-2,0%\n31.03.2020;0,5%", "auto");
+    const ok2 = t2.cols && t2.cols[0].kind === "pct" && Math.abs(t2.cols[0].values[1] + 0.02) < 1e-12;
+    const t3 = M.parseSeries("d,p\n2020-01-02,100\n2020-01-31,102\n2020-02-03,101\n2020-02-28,99.96\n2020-03-31,104.958", "levels");
+    const ok3 = t3.cols && t3.cols[0].dates.join() === "2020-02,2020-03" && Math.abs(t3.cols[0].values[0] - (99.96 / 102 - 1)) < 1e-12;
+    const t4 = M.parseSeries("d,r\n2020-01,0.01\n2020-02,0.02\n2020-04,0.03", "returns");
+    const t5 = M.parseSeries("d;r\n2020-01;0.012\n2020-02;-0.004\n2020-03;0.007", "auto");
+    const ok5 = t5.cols && t5.cols[0].kind === "returns" && Math.abs(t5.cols[0].values[0] - 0.012) < 1e-15;
+    add("CSV upload: prices, percent, daily, decimal comma, gaps", ok1 && ok2 && ok3 && !!t4.error && ok5, `levels→returns ${ok1}, "1,5%" ${ok2}, daily→month-end ${ok3}, gap rejected ${!!t4.error}, ";" with dot decimals ${ok5}`); }
+
+  // v0.3: optional long window (present when the pipeline built it)
+  if (DATA.long && DATA.long.dates) {
+    const L = DATA.long, d = L.dates, ok = [];
+    const toN = s => +s.slice(0, 4) * 12 + +s.slice(5, 7);
+    ok.push(d.every((x, k) => k === 0 || toN(x) === toN(d[k - 1]) + 1));
+    ok.push(L.assets.every(a => L.returns[a].length === d.length) && d.length === L.window.months);
+    const off = d.indexOf(DATA.monthly.dates[0]); let g = 0;
+    if (off < 0) ok.push(false); else L.assets.forEach(a => DATA.monthly.returns[a].forEach((x, k) => { g = Math.max(g, Math.abs(x - L.returns[a][off + k])); }));
+    ok.push(g === 0 && d[0] <= "1992-01" && d[d.length - 1] === DATA.monthly.dates[DATA.monthly.dates.length - 1]);
+    add("Long window: continuous, same length, identical to the main series where they overlap", ok.every(Boolean), `${d[0]} – ${d[d.length - 1]}, ${d.length} months, ${L.assets.length} assets, max overlap gap ${g}`);
+  }
   return out;
 }
 // ===== END TESTS =====
