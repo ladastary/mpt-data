@@ -259,18 +259,48 @@ td.hi { color: var(--good); } td.lo { color: var(--bad); }
 .panel > .alert { margin: 0 14px 10px; }
 footer { padding-block: 10px 40px; color: var(--ink-3); font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
+.sharebar { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding-block: 0 8px; }
+.onlyreport { display: none; }
+:root[data-view="report"] .onlyreport { display: block; }
+:root[data-view="report"] .noreport, :root[data-view="report"] [data-apply], :root[data-view="report"] #rs-run, :root[data-view="report"] .ctl,
+:root[data-view="report"] #builder-panel, :root[data-view="report"] details.about, :root[data-view="report"] footer, :root[data-view="report"] #bl-views,
+:root[data-view="report"] #bl-add-abs, :root[data-view="report"] #bl-add-rel, :root[data-view="report"] .card .tgt input { display: none !important; }
+:root[data-view="report"] main.grid { grid-template-columns: minmax(0, 1fr); }
+:root[data-view="report"] .band { position: static; }
+.report-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-block: 4px 12px; }
+@media print {
+  .onlyreport { display: block; } .report-bar { display: none; }
+  .noreport, [data-apply], #rs-run, .ctl, #builder-panel, details.about, footer, #bl-views, #bl-add-abs, #bl-add-rel, .seg { display: none !important; }
+  main.grid, .grid2 { grid-template-columns: minmax(0, 1fr) !important; }
+  .band { position: static; backdrop-filter: none; }
+  .panel, .card { break-inside: avoid; }
+  body { background: #fff; }
+}
 #test-out { width: 100%; font-family: var(--font-mono); font-size: 12px; display: grid; gap: 2px; }
 #test-out .ok { color: var(--good); } #test-out .fail { color: var(--bad); }
 </style>
 
 <div class="wrap top">
   <div>
-    <div class="eyebrow">Modern Portfolio Theory · EUR investor · <span id="ver">v0.4</span></div>
+    <div class="eyebrow">Modern Portfolio Theory · EUR investor · <span id="ver">v0.5</span></div>
     <h1>MPT Portfolio Simulator</h1>
   </div>
   <div class="meta" id="top-meta"></div>
 </div>
-<nav class="wrap jump" aria-label="Sections">
+<div class="wrap sharebar noreport">
+  <button class="btn sm" id="btn-link" type="button">Copy link to this portfolio</button>
+  <button class="btn sm" id="btn-csv" type="button">Export weights (CSV)</button>
+  <button class="btn sm" id="btn-report" type="button" aria-pressed="false">Report view</button>
+  <span class="hint" id="share-msg" role="status"></span>
+  <input id="share-url" type="text" readonly hidden aria-label="Link to this portfolio" style="flex:1 1 260px; min-width:0; font-family:var(--font-mono); font-size:12px; padding:3px 6px; border:1px solid var(--line); border-radius:4px; background:var(--surface); color:var(--ink)">
+</div>
+<div class="wrap onlyreport" id="report-head">
+  <div class="report-bar"><button class="btn sm" id="btn-report-exit" type="button">Back to the simulator</button><span class="hint">Report view: controls hidden, ready to read or print (use your browser's print on the downloaded file).</span></div>
+  <section class="panel"><header><h2>Portfolio report</h2><span class="hint" id="rep-date"></span></header>
+    <div class="body"><div class="facts" id="rep-facts" style="margin-bottom:12px"></div><div class="scroll"><table id="rep-table"></table></div></div>
+  </section>
+</div>
+<nav class="wrap jump noreport" aria-label="Sections">
   <a href="#builder-panel">Portfolio</a><a href="#front-panel">Frontier</a><a href="#rec-panel">Recommendations</a><a href="#risk-panel">Risk</a><a href="#hist-panel">History</a><a href="#bl-panel">Black-Litterman</a><a href="#mc-panel">Monte Carlo</a><a href="#robust-panel">Robustness</a><a href="#about">Data</a>
 </nav>
 
@@ -508,7 +538,7 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
 // Embedded at build time from ladastary/mpt-data/data/latest.json by site/build_page.py. Do not edit by hand.
 const DATA = /*__DATA_START__*/null/*__DATA_END__*/;
 const PAGE_BUILT = "__PAGE_BUILT__";
-const PAGE_VERSION = "v0.4";
+const PAGE_VERSION = "v0.5";
 // ===== END DATA =====
 
 // ===== MATH =====
@@ -1067,8 +1097,62 @@ const M = (() => {
     return { bands, qs, final: qs.map(q => pctl(fin, q)), mdd: [0.5, 0.05].map(q => pctl(mdd, q)), fin, mddAll: mdd, frac };
   }
 
+  // ---- v0.5: shareable links and CSV export ----
+  // Link state lives in the URL hash, which artifact links pass only as letters, digits and - . _ ~.
+  // Format: p<w1>-<w2>-...  (basis points per pipeline asset, x = not selected), then optional _<key><value> groups:
+  // m a|c (mode), b r|f|1|2|l|L (basis), s 1 (shrunk), c cap %, r risk-free bp, i inflation bp, v target vol bp,
+  // t target return bp, k class bounds and a asset bounds as min.max in % joined by -, e 1 (Black-Litterman on).
+  // Negative numbers carry a leading n. Old links ("#p...") remain valid.
+  const BASIS_CODE = { roll10: "r", full: "f", half1: "1", half2: "2", long: "l", long10: "L" };
+  const num = x => (x < 0 ? "n" + Math.round(-x) : String(Math.round(x)));
+  const unnum = s => (/^n?\d+$/.test(s) ? (s[0] === "n" ? -Number(s.slice(1)) : Number(s)) : NaN);
+  function hashEncode(o) {
+    const g = ["p" + o.w.map(x => (x == null ? "x" : num(x * 10000))).join("-")];
+    if (o.mode === "class") g.push("mc");
+    if (o.basis && o.basis !== "roll10") g.push("b" + BASIS_CODE[o.basis]);
+    if (o.shrink) g.push("s1");
+    if (o.cap != null && o.cap < 1) g.push("c" + num(o.cap * 100));
+    if (o.rf != null) g.push("r" + num(o.rf * 10000));
+    if (o.infl != null && Math.abs(o.infl - 0.02) > 1e-9) g.push("i" + num(o.infl * 10000));
+    if (o.tv != null && Math.abs(o.tv - 0.08) > 1e-9) g.push("v" + num(o.tv * 10000));
+    if (o.tr != null && Math.abs(o.tr - 0.05) > 1e-9) g.push("t" + num(o.tr * 10000));
+    const bnd = a => a.map(([lo, hi]) => num(lo * 100) + "." + num(hi * 100)).join("-");
+    if (o.cb && o.cb.some(([lo, hi]) => lo > 0 || hi < 1)) g.push("k" + bnd(o.cb));
+    if (o.ab && o.ab.some(([lo, hi]) => lo > 0 || hi < 1)) g.push("a" + bnd(o.ab));
+    if (o.bl) g.push("e1");
+    return g.join("_");
+  }
+  function hashParse(h, nAssets, nClasses) {
+    const parts = String(h || "").replace(/^#/, "").split("_");
+    const m = /^p([0-9xn-]+)$/.exec(parts[0] || ""); if (!m) return null;
+    const ws = m[1].split("-"); if (ws.length !== nAssets) return null;
+    const w = ws.map(s => (s === "x" ? null : unnum(s) / 10000));
+    if (w.some(x => x != null && !(x >= 0 && x <= 1.0001))) return null;
+    const o = { w };
+    const inv = Object.fromEntries(Object.entries(BASIS_CODE).map(([k, v]) => [v, k]));
+    const bnd = (s, n) => { const a = s.split("-").map(p => p.split(".").map(unnum)); return a.length === n && a.every(x => x.length === 2 && x.every(isFinite)) ? a.map(([lo, hi]) => [lo / 100, hi / 100]) : null; };
+    for (const p of parts.slice(1)) {
+      const k = p[0], v = p.slice(1);
+      if (k === "m") o.mode = v === "c" ? "class" : "asset";
+      else if (k === "b" && inv[v]) o.basis = inv[v];
+      else if (k === "s") o.shrink = v === "1";
+      else if (k === "c" && isFinite(unnum(v))) o.cap = unnum(v) / 100;
+      else if (k === "r" && isFinite(unnum(v))) o.rf = unnum(v) / 10000;
+      else if (k === "i" && isFinite(unnum(v))) o.infl = unnum(v) / 10000;
+      else if (k === "v" && isFinite(unnum(v))) o.tv = unnum(v) / 10000;
+      else if (k === "t" && isFinite(unnum(v))) o.tr = unnum(v) / 10000;
+      else if (k === "k") o.cb = bnd(v, nClasses);
+      else if (k === "a") o.ab = bnd(v, nAssets);
+      else if (k === "e") o.bl = v === "1";
+    }
+    return o;
+  }
+  // RFC 4180 CSV: fields with comma, quote or newline are quoted, quotes doubled.
+  const csvField = x => { const s = x == null ? "" : String(x); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const toCSV = rows => rows.map(r => r.map(csvField).join(",")).join("\r\n") + "\r\n";
+
   return { dot, matVec, sum, clamp, covariance, stats, lamFor, project, projectGroups, makeProj, feasible, maxEig, solveMV, frontier, maxSharpe,
-    rng, cholesky, solve, resampler, blackLitterman, monteCarlo,
+    rng, cholesky, solve, resampler, blackLitterman, monteCarlo, hashEncode, hashParse, toCSV,
     frontierTarget, retAtVol, volAtRet, riskContrib, backtest, jacobi, psdRepair, annualise, corr, estimate, rolling,
     ledoitWolf, estimateW, rollingW, pairwise, parseSeries };
 })();
@@ -1311,16 +1395,38 @@ function loadUploads() {
   } catch (e) { /* storage unavailable or corrupt */ }
 }
 
-// Hash: "#p" + basis points per asset in DATA order, "x" = excluded. Only letters/digits/-/. survive artifact links.
-function encodeHash() { return "p" + DATA.assets.map((a, i) => (STATE.incl[i] ? Math.round(STATE.w[i] * 10000) : "x")).join("-"); }
-function decodeHash(h) {
-  const m = /^#?p([0-9x-]+)$/.exec(h || ""); if (!m) return false;
-  const parts = m[1].split("-"); if (parts.length !== DATA.assets.length) return false;
-  const incl = U.map((a, i) => i < parts.length && parts[i] !== "x" && avail(i));
-  const w = U.map((a, i) => (incl[i] ? Number(parts[i]) / 10000 : 0));
-  const s = w.reduce((a, b) => a + b, 0);
-  if (!incl.some(Boolean) || !(s > 0.5)) return false;
-  STATE.incl = incl; STATE.w = w.map(x => x / s); return true;
+// Shareable link state (v0.5): weights plus the settings that change the answer; see M.hashEncode for the format.
+const PAGE_URL = "https://claude.ai/artifact/CZzP6LHZn2gWJLck9j8xcP";
+function encodeHash() {
+  const ci = IDX[CASH_ID], rfDefault = ci != null ? HIST.mu[ci] : NaN;
+  return M.hashEncode({
+    w: DATA.assets.map((a, i) => (STATE.incl[i] ? STATE.w[i] : null)), mode: STATE.mode, basis: STATE.basis, shrink: SHRINK, cap: STATE.cap,
+    rf: isFinite(rfDefault) && Math.abs(STATE.rf - rfDefault) > 5e-5 ? STATE.rf : null, infl: STATE.infl, tv: STATE.tVol, tr: STATE.tRet,
+    cb: DATA.classes.map(c => [STATE.cmin[c.id] || 0, STATE.cmax[c.id] == null ? 1 : STATE.cmax[c.id]]),
+    ab: DATA.assets.map((a, i) => [STATE.amin[i], STATE.amax[i]]), bl: STATE.bl.on });
+}
+// Apply a link. Settings first (they decide which assets exist on the basis), then the weights.
+function applyHash(h) {
+  const o = M.hashParse(h, DATA.assets.length, DATA.classes.length); if (!o) return false;
+  if (o.shrink) { SHRINK = true; $("in-shrink").value = "1"; makeBases(); }
+  const b = o.basis && BASES[o.basis] ? o.basis : "roll10";
+  HIST = BASES[b]; STATE.basis = b;
+  STATE.muRaw = HIST.mu.slice(); STATE.vol = HIST.vol.slice(); STATE.C = HIST.C.map(r => r.slice());
+  if (isFinite(HIST.mu[IDX[CASH_ID]])) STATE.rf = HIST.mu[IDX[CASH_ID]];
+  STATE.mode = o.mode === "class" ? "class" : "asset";
+  const incl = U.map((a, i) => i < o.w.length && o.w[i] != null && selectable(i));
+  const w = U.map((a, i) => (incl[i] ? o.w[i] : 0)), sw = w.reduce((x, y) => x + y, 0);
+  if (!incl.some(Boolean) || !(sw > 0.5)) { STATE.mode = "asset"; return false; }
+  STATE.incl = incl; STATE.w = w.map(x => x / sw);
+  if (o.cap != null) STATE.cap = M.clamp(o.cap, 0.01, 1);
+  if (o.infl != null) STATE.infl = o.infl;
+  if (o.tv != null) STATE.tVol = Math.max(0, o.tv);
+  if (o.tr != null) STATE.tRet = o.tr;
+  if (o.cb) DATA.classes.forEach((c, k) => { STATE.cmin[c.id] = M.clamp(o.cb[k][0], 0, 1); STATE.cmax[c.id] = o.cb[k][1] >= 1 ? null : M.clamp(o.cb[k][1], 0, 1); });
+  if (o.ab) o.ab.forEach(([lo, hi], i) => { STATE.amin[i] = M.clamp(lo, 0, 1); STATE.amax[i] = M.clamp(hi, 0, 1); });
+  if (o.rf != null) STATE.rf = o.rf;
+  if (o.bl) STATE.bl.on = true;
+  return true;
 }
 
 // Constraint set for the optimizer over the selected assets `sub`. Infeasible parts are dropped with a note.
@@ -1396,8 +1502,8 @@ function realised(R, w, rf) {
   return { ret: a.mu, vol: a.vol, sharpe: a.vol > 0 ? (a.mu - rf) / a.vol : NaN, maxDD: bt.maxDD, cagr: bt.cagr };
 }
 function buildRobust() {
-  const key = JSON.stringify([STATE.incl, STATE.w, STATE.cap, STATE.amin, STATE.amax, STATE.cmin, STATE.cmax, SHRINK, N]);
-  if (ROBUST && ROBUST.key === key) return ROBUST;
+  const key = JSON.stringify([STATE.incl, STATE.cap, STATE.amin, STATE.amax, STATE.cmin, STATE.cmax, SHRINK, N]);
+  if (ROBUST && ROBUST.key === key) { robustYours(ROBUST); return ROBUST; }
   const H = [BASES.half1, BASES.half2];
   const sub = []; for (let i = 0; i < N; i++) if (STATE.incl[i] && H.every(b => b.avail[i] && !b.note[i])) sub.push(i);
   const res = { key, sub, dirs: [] };
@@ -1406,8 +1512,7 @@ function buildRobust() {
   const ci = IDX[CASH_ID];
   const rfOf = b => (ci != null && isFinite(b.mu[ci]) ? b.mu[ci] : STATE.rf);
   const ser = b => sub.map(i => seriesOn(U[i], b.src, b.from, b.to));
-  const ys = STATE.w.map((w, i) => (STATE.incl[i] ? w : 0)), ysum = M.sum(sub.map(i => ys[i]));
-  const yours = sub.map(i => (ysum > 0 ? ys[i] / ysum : 1 / sub.length)), eq = sub.map(() => 1 / sub.length);
+  const eq = sub.map(() => 1 / sub.length);
   for (const [fit, test] of [[H[0], H[1]], [H[1], H[0]]]) {
     const mu = sub.map(i => fit.mu[i] - (U[i].ter || 0)), S = M.covariance(sub.map(i => fit.vol[i]), sub.map(i => sub.map(j => fit.C[i][j])));
     const pts = M.frontier(mu, S, cs.lo, cs.hi, cs.P), ms = M.maxSharpe(mu, S, cs.lo, cs.hi, rfOf(fit), pts, cs.P);
@@ -1415,9 +1520,16 @@ function buildRobust() {
     res.dirs.push({ fit, test, w: ms.w, predicted: ms, rows: [
       { label: `Max-Sharpe fitted on the ${fit.id === "half1" ? "first" : "second"} half`, ...realised(R, ms.w, rf), pred: ms.sharpe },
       { label: "Equal weight", ...realised(R, eq, rf) },
-      { label: "Your portfolio (same selection)", ...realised(R, yours, rf) }] });
+      { label: "Your portfolio (same selection)" }], R, rf });
   }
-  ROBUST = res; return res;
+  ROBUST = res; robustYours(res); return res;
+}
+// The "your portfolio" rows follow the sliders; the fitted portfolios above do not need refitting for that.
+function robustYours(res) {
+  if (!res.dirs.length) return;
+  const sub = res.sub, ys = sub.map(i => (STATE.incl[i] ? STATE.w[i] : 0)), ysum = M.sum(ys);
+  const yours = ys.map(x => (ysum > 0 ? x / ysum : 1 / sub.length));
+  for (const d of res.dirs) d.rows[2] = { label: "Your portfolio (same selection)", ...realised(d.R, yours, d.rf) };
 }
 // ===== END STATE =====
 
@@ -2084,6 +2196,72 @@ function renderMC(m, s) {
   styleAxes(mcchart.options.scales, col); mcchart.update("none");
 }
 
+// Export table shared by the CSV and the report view: weights of your portfolio and every recommendation.
+function exportRows(m, s) {
+  const recs = [["Yours", null], ["Max-Sharpe", m.ms], ["Min-vol", m.mv], [`Target vol ${pct(STATE.tVol)}`, m.tv], [`Target return ${pct(STATE.tRet)}`, m.tr && m.tr.w ? m.tr : null]];
+  if (RS && RS.key === m.key) recs.push(["Resampled", RS.best]);
+  const label = i => (STATE.mode === "class" ? className(U[i].class) : U[i].name);
+  const wOf = (r, i) => (r ? r.wf[i] : STATE.incl[i] ? STATE.w[i] : 0);
+  const f2 = x => (x == null || !isFinite(x) ? "" : (x * 100).toFixed(2));
+  const st = recs.map(([, r]) => (r ? r : s));
+  const rows = [["Weights in %", ...recs.map(([n]) => n)]];
+  m.sub.forEach(i => rows.push([label(i), ...recs.map(([, r]) => f2(wOf(r, i)))]));
+  rows.push(["Expected return %", ...st.map(x => f2(x.ret))], ["Volatility %", ...st.map(x => f2(x.vol))], ["Sharpe", ...st.map(x => (isFinite(x.sharpe) ? x.sharpe.toFixed(3) : ""))]);
+  return rows;
+}
+function settingsRows() {
+  const nb = Object.values(STATE.cmin).some(v => v > 0) || Object.values(STATE.cmax).some(v => v != null) || STATE.amin.some(x => x > 0) || STATE.amax.some(x => x < 1);
+  return [["Estimation basis", HIST.short], ["Expected returns", STATE.bl.on ? `Black-Litterman posterior, ${STATE.bl.views.length} view(s)` : "Historical means"], ["Risk-free rate %", (STATE.rf * 100).toFixed(2)],
+    ["Inflation %", (STATE.infl * 100).toFixed(1)], ["Max weight per asset %", (STATE.cap * 100).toFixed(0)], ["Other bounds", nb ? "yes (see the simulator)" : "none"],
+    ["Data window", `${HIST.dates[0]} to ${HIST.dates[HIST.dates.length - 1]} (${HIST.months} months)`], ["Data built", DATA.settings.built], ["Page", `${PAGE_VERSION}, built ${PAGE_BUILT}`], ["Link", shareURL()]];
+}
+function shareURL() {
+  const local = location.protocol === "file:" || (/^https?:$/.test(location.protocol) && !/claude|anthropic/.test(location.hostname) && location.hostname !== "");
+  return (local ? location.href.split("#")[0] : PAGE_URL) + "#" + encodeHash();
+}
+function renderReport(m, s, force) {
+  if (!force && document.documentElement.dataset.view !== "report") return;
+  $("rep-date").textContent = new Date().toISOString().slice(0, 10);
+  $("rep-facts").innerHTML = settingsRows().filter(r => r[0] !== "Link" && r[0] !== "Page").map(([k, v]) => `<div><span>${esc(k)}</span>${esc(v)}</div>`).join("");
+  const rows = exportRows(m, s);
+  $("rep-table").innerHTML = `<thead><tr>${rows[0].map((h, k) => `<th${k ? ' class="n"' : ""}>${esc(h)}</th>`).join("")}</tr></thead><tbody>`
+    + rows.slice(1).map((r, j) => `<tr${j === rows.length - 4 ? ' class="sum"' : ""}>${r.map((c, k) => (k ? `<td class="n mono">${esc(c)}</td>` : `<td>${esc(c)}</td>`)).join("")}</tr>`).join("") + "</tbody>";
+}
+function setReport(on) {
+  if (on) document.documentElement.dataset.view = "report"; else delete document.documentElement.dataset.view;
+  $("btn-report").setAttribute("aria-pressed", String(on));
+  render(); window.scrollTo(0, 0);
+}
+async function exportCSV() {
+  const m = buildModel(), s = currentStats(), msg = $("share-msg");
+  const csv = M.toCSV(exportRows(m, s).concat([[], ["Setting", "Value"]], settingsRows()));
+  const name = `mpt-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
+  let dl = null;
+  try { dl = window.claude && typeof window.claude.use === "function" ? await window.claude.use("downloads") : null; } catch (e) { dl = null; }
+  if (dl) {
+    try { await dl.save({ filename: name, data: csv }); msg.textContent = "CSV saved."; }
+    catch (e) { msg.textContent = e && e.code === "declined" ? "Not saved." : "Saving is not available here; the CSV is in the box to copy."; if (!(e && e.code === "declined")) showCopyBox(csv); }
+    return;
+  }
+  if (!window.claude) {   // the downloaded file, opened locally: a normal browser download works
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    msg.textContent = "CSV downloaded."; return;
+  }
+  msg.textContent = "Saving files is not available in this view; the CSV is in the box to copy."; showCopyBox(csv);
+}
+function showCopyBox(text) {
+  const u = $("share-url"); u.hidden = false; u.value = text; u.focus(); u.select();
+  try { navigator.clipboard.writeText(text).then(() => { $("share-msg").textContent += " Copied to the clipboard."; }, () => {}); } catch (e) { /* select-and-copy fallback */ }
+}
+function copyLink() {
+  const url = shareURL(), u = $("share-url"), msg = $("share-msg");
+  u.hidden = false; u.value = url;
+  const fallback = () => { u.focus(); u.select(); msg.textContent = "Press Ctrl+C / ⌘C to copy the selected link."; };
+  try { navigator.clipboard.writeText(url).then(() => { msg.textContent = "Link copied. It opens this portfolio with these settings for anyone who can view the page."; }, fallback); }
+  catch (e) { fallback(); }
+}
+
 // Upload box
 let upParsed = null;
 function buildUpBox() {
@@ -2112,7 +2290,7 @@ let timer = null, upTimer = null;
 function schedule() { clearTimeout(timer); timer = setTimeout(render, 50); }
 function render() {
   const m = buildModel(), s = renderMetrics();
-  renderChart(m, s); renderPosition(m, s); renderRecs(m, s); renderRisk(m); renderHistory(m); renderRobust(); renderBL(); renderMC(m, s);
+  renderChart(m, s); renderPosition(m, s); renderRecs(m, s); renderRisk(m); renderHistory(m); renderRobust(); renderBL(); renderMC(m, s); renderReport(m, s);
   try { history.replaceState(null, "", "#" + encodeHash()); } catch (e) { /* not available in some frames */ }
 }
 function refreshAll() { syncBuilder(); syncStatsTable(); syncCorrTable(); schedule(); }
@@ -2196,6 +2374,13 @@ function wire() {
   inBasis.value = STATE.basis; $("meta-basis").textContent = HIST.short;
   inBasis.addEventListener("change", () => setBasis(inBasis.value));
   $("in-shrink").addEventListener("change", e => { SHRINK = e.target.value === "1"; makeBases(); setBasis(STATE.basis); buildRollTable(); });
+  // v0.5: share and export
+  $("btn-link").addEventListener("click", copyLink);
+  $("btn-csv").addEventListener("click", exportCSV);
+  $("btn-report").addEventListener("click", () => setReport(document.documentElement.dataset.view !== "report"));
+  $("btn-report-exit").addEventListener("click", () => setReport(false));
+  try { matchMedia("print").addEventListener("change", e => { if (e.matches) renderReport(buildModel(), currentStats(), true); }); } catch (e) { /* old browsers */ }
+  window.addEventListener("beforeprint", () => renderReport(buildModel(), currentStats(), true));
   // v0.4: resampling, Black-Litterman, Monte Carlo
   document.addEventListener("click", e => { if (e.target.id === "rs-run") runResample(); });
   const setBL = on => { STATE.bl.on = on; if (on && !STATE.bl.snap && STATE.bl.ref === "snap") STATE.bl.snap = STATE.w.map((w, i) => (STATE.incl[i] ? w : 0)); refreshAll(); };
@@ -2276,8 +2461,9 @@ function wire() {
 function init() {
   loadUploads();
   if (U.some(a => a.upload)) { makeBases(); HIST = BASES.roll10; STATE.muRaw = HIST.mu.slice(); STATE.vol = HIST.vol.slice(); STATE.C = HIST.C.map(r => r.slice()); }
+  const fromLink = applyHash(location.hash);
   buildHeader(); buildBuilder(); buildCards(); buildCons(); buildUpBox(); buildAbout(); buildViews();
-  if (!decodeHash(location.hash)) resetState();
+  if (!fromLink) resetState();
   syncBuilder(); wire(); render();
 }
 init();
@@ -2517,6 +2703,20 @@ function runSelfTests(M, DATA) {
     const g = 0.06 - 0.12 * 0.12 / 2, exactMed = Math.exp(10 * g);
     add("Monte Carlo: deterministic without volatility, ordered percentiles, sensible median", Math.abs(z.final[2] - exp) < 1e-12 && z.mdd[1] === 0 && ordered && Math.abs(bt.final[2] - Math.pow(1.01, 36)) < 1e-12 && Math.abs(med / exactMed - 1) < 0.03,
       `σ=0: ${z.final[2].toFixed(6)} vs ${exp.toFixed(6)}; σ=12%, 10y median ×${med.toFixed(3)} vs e^{10(μ−σ²/2)} ×${exactMed.toFixed(3)}; bootstrap of constant 1% exact`); }
+
+  // v0.5: shareable links and CSV
+  { const o = { w: [0.25, null, 0.3333, 0.4167], mode: "class", basis: "long10", shrink: true, cap: 0.35, rf: -0.0025, infl: 0.03, tv: 0.07, tr: 0.045,
+      cb: [[0.3, 0.6], [0, 1]], ab: [[0, 1], [0, 1], [0.05, 0.4], [0, 1]], bl: true };
+    const h = M.hashEncode(o), b = M.hashParse("#" + h, 4, 2);
+    const near = (x, y) => Math.abs(x - y) < 1e-9;
+    const rt = b && b.mode === "class" && b.basis === "long10" && b.shrink && near(b.cap, 0.35) && near(b.rf, -0.0025) && near(b.infl, 0.03) && near(b.tv, 0.07) && near(b.tr, 0.045) && b.bl
+      && b.w[1] === null && near(b.w[2], 0.3333) && near(b.cb[0][0], 0.3) && near(b.cb[0][1], 0.6) && near(b.ab[2][0], 0.05);
+    const legal = /^[A-Za-z0-9._~-]+$/.test(h);
+    const old = M.hashParse("#p1250-1250-1250-x-x-1250-1250-1250-1250-1250", 10, 4);
+    const csv = M.toCSV([["a", "b,c", 'say "hi"'], [1, "", "x\ny"]]);
+    const csvOk = csv === 'a,"b,c","say ""hi"""\r\n1,,"x\ny"\r\n';
+    add("Links round-trip every setting in URL-safe characters; old links still load; CSV quoting", rt && legal && old && old.w.length === 10 && old.w[3] === null && csvOk && M.hashParse("#garbage", 4, 2) === null,
+      `${h.length} characters: ${h}`); }
 
   // v0.3: optional long window (present when the pipeline built it)
   if (DATA.long && DATA.long.dates) {
