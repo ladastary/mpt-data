@@ -1,6 +1,6 @@
 # Data quality report
 
-Built 2026-10-13 · window 2001-01 – 2026-08 (308 months) · all returns monthly, total return, EUR, unhedged · FX: USD: Fed H.10 noon NY (FRED DEXUSEU), month-end; CZK: Czech National Bank fixing, month-end
+Built 2026-10-15 · window 2001-01 – 2026-08 (308 months) · all returns monthly, total return, EUR, unhedged · FX: USD: Fed H.10 noon NY (FRED DEXUSEU), month-end; CZK: Czech National Bank fixing, month-end
 
 | Asset | Months | First | Last | μ (arith.) | σ | CAGR | Max DD | Worst 12m | Default | Source |
 |---|---|---|---|---|---|---|---|---|---|---|
