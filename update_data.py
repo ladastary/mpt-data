@@ -10,13 +10,16 @@ Runs monthly on GitHub Actions (see .github/workflows/update.yml). Plain Python,
      If a check fails: keeps last month's data, writes data/status.json, and the run fails
      (GitHub then e-mails the repo owner).
 """
-import csv, io, json, math, os, sys, time, datetime as dt, urllib.request
+import csv, io, json, math, os, sys, time, zipfile, datetime as dt, urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(ROOT, "raw")
 OUT = os.path.join(ROOT, "data")
 MIN_MONTHS = 300                         # expanding window: all months every asset has, at least 25 years
 FETCH_FROM = dt.date(2000, 1, 1)         # a little history before the window
+LONG_FROM = dt.date(1990, 12, 1)         # optional long window (v0.3): Kenneth French splice before 2001
+LONG_MIN_START = "1992-01"               # long window must start by this month
+DEM_PER_EUR = 1.95583                    # irrevocable conversion rate, 31 Dec 1998
 TODAY = dt.date.today()
 CURRENT_MONTH = TODAY.strftime("%Y-%m")  # incomplete month, always excluded
 UA = "Mozilla/5.0 (compatible; mpt-data/1.0; +https://github.com/ladastary/mpt-data)"
@@ -42,6 +45,19 @@ def http_get(url, tries=4, timeout=90, headers=None):
             req = urllib.request.Request(url, headers=headers or {"User-Agent": UA, "Accept": "*/*"})
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read().decode("utf-8", errors="replace")
+        except Exception as e:  # noqa
+            last = e
+            time.sleep(4 * (i + 1))
+    raise RuntimeError(f"download failed: {url} ({last})")
+
+
+def http_get_bytes(url, tries=4, timeout=90):
+    last = None
+    for i in range(tries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read()
         except Exception as e:  # noqa
             last = e
             time.sleep(4 * (i + 1))
@@ -117,8 +133,9 @@ def stdev(x):
 
 
 # ---------------------------------------------------------------- sources
-def fred(series_id):
-    """FRED public CSV. Returns {date: value}."""
+def fred(series_id, since=None, tag=""):
+    """FRED public CSV. Returns {date: value} from `since` (default FETCH_FROM)."""
+    since = since or FETCH_FROM
     txt = http_get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}")
     rows = list(csv.reader(io.StringIO(txt)))
     out = {}
@@ -126,11 +143,11 @@ def fred(series_id):
         if len(r) < 2 or r[1].strip() in (".", ""):
             continue
         d = dt.date.fromisoformat(r[0].strip())
-        if d >= FETCH_FROM:
+        if d >= since:
             out[d] = float(r[1])
     if not out:
         raise RuntimeError(f"FRED {series_id}: no data")
-    save_raw(f"fred_{series_id}", out)
+    save_raw(f"fred_{series_id}{tag}", out)
     return out
 
 
@@ -246,10 +263,71 @@ def gold_worldbank(usd_per_eur_me):
     txt = http_get("https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv")
     usd = {}
     for r in list(csv.reader(io.StringIO(txt)))[1:]:
-        if r and r[0] >= "2000-01":
+        if r and r[0] >= LONG_FROM.strftime("%Y-%m"):
             usd[r[0][:7]] = float(r[1])
     save_raw("worldbank_gold_USD_monthly_avg", usd)
     return complete_only({m: v / usd_per_eur_me[m] for m, v in usd.items() if m in usd_per_eur_me})
+
+
+def worldbank_gold_usd():
+    """World Bank Pink Sheet monthly AVERAGE gold price in USD, from LONG_FROM. Returns {'YYYY-MM': USD}."""
+    txt = http_get("https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv")
+    out = {r[0][:7]: float(r[1]) for r in list(csv.reader(io.StringIO(txt)))[1:] if r and r[0] >= LONG_FROM.strftime("%Y-%m")}
+    return complete_only(out)
+
+
+FRENCH = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/{f}"
+
+
+def french_market(fname):
+    """Kenneth French data library: monthly market total return in USD = (Mkt-RF + RF) / 100.
+    Returns {'YYYY-MM': return}. Reads only the first (monthly) block of the CSV inside the zip."""
+    z = zipfile.ZipFile(io.BytesIO(http_get_bytes(FRENCH.format(f=fname))))
+    txt = z.read(z.namelist()[0]).decode("latin-1")
+    hdr, out = None, {}
+    for line in txt.splitlines():
+        parts = [p.strip() for p in line.split(",")]
+        if hdr is None:
+            if "Mkt-RF" in parts:
+                hdr = parts
+            continue
+        if not parts[0] or not parts[0].isdigit() or len(parts[0]) != 6:
+            if out:
+                break
+            continue
+        m = f"{parts[0][:4]}-{parts[0][4:]}"
+        out[m] = (float(parts[hdr.index("Mkt-RF")]) + float(parts[hdr.index("RF")])) / 100
+    if not out:
+        raise RuntimeError(f"French {fname}: no monthly rows parsed")
+    save_raw(f"french_{fname.replace('_CSV.zip', '')}_market_USD", out)
+    return complete_only(out)
+
+
+def cnb_usd_dem(y0=1991, y1=2001):
+    """Czech National Bank daily fixing 1991-2001: month-end USD per DEM (cross via CZK)."""
+    usd, dem = {}, {}
+    for y in range(y0, y1 + 1):
+        hdr = None
+        for line in http_get(CNB_URL.format(y=y)).splitlines():
+            parts = line.strip().split("|")
+            if not parts or not parts[0]:
+                continue
+            if parts[0] == "Date":
+                hdr = parts
+                continue
+            if hdr is None:
+                continue
+            d = dt.datetime.strptime(parts[0], "%d.%m.%Y").date()
+            for col, val in zip(hdr[1:], parts[1:]):
+                bits = col.split(" ")
+                if len(bits) != 2 or bits[1] not in ("USD", "DEM") or not val.strip():
+                    continue
+                rate = float(val.replace(",", ".")) / float(bits[0])
+                (usd if bits[1] == "USD" else dem)[d] = rate
+    usd_me, dem_me = complete_only(month_end(usd)), complete_only(month_end(dem))
+    out = {m: dem_me[m] / usd_me[m] for m in dem_me if m in usd_me}
+    save_raw("cnb_USD_per_DEM_monthend_1991_2001", out)
+    return out
 
 
 # ---------------------------------------------------------------- transforms
@@ -351,6 +429,7 @@ def build():
                "CZK": {m: 1 / v for m, v in czk_eur_me.items()}}
     save_raw("fx_USD_per_EUR_monthend_used", usd_per_eur)
     meta["_fx"] = fx_src
+    meta["_usd_per_eur"] = usd_per_eur
 
     # Equities: MSCI net return, native EUR series; USD series used for checks
     for a in [x for x in ASSETS if x["kind"] == "msci"]:
@@ -429,6 +508,97 @@ def build():
     return ret, meta
 
 
+# ---------------------------------------------------------------- optional long window (v0.3)
+LONG_ASSETS = {  # id -> how the pre-2001 part is built
+    "EQ_US": dict(kind="french", file="F-F_Research_Data_Factors_CSV.zip", label="Kenneth French US market (CRSP)"),
+    "EQ_EU": dict(kind="french", file="Europe_3_Factors_CSV.zip", label="Kenneth French Europe market"),
+    "EQ_EM": dict(kind="french", file="Emerging_5_Factors_CSV.zip", label="Kenneth French Emerging market"),
+    "GOLD": dict(kind="gold"),
+    "BD_US10": dict(kind="bond", code="IRLTLT01USM156N", ccy="USD"),
+    "BD_DE10": dict(kind="bond", code="IRLTLT01DEM156N", ccy="EUR"),
+    "CASH_EUR": dict(kind="cash"),
+}
+
+
+def build_long(ret, meta, dates):
+    """Monthly EUR returns from ~Feb 1991: main series from the main window start, spliced with
+    pre-2001 constructions. Any failure here only drops the long window (soft checks)."""
+    start_main = dates[0]
+    fx_main = meta["_usd_per_eur"]
+    lc = []                                       # long-window checks, added to CHECKS as soft
+
+    def lcheck(name, ok, detail):
+        lc.append((name, ok))
+        check("LONG " + name, ok, detail, hard=False)
+
+    # Synthetic EUR before 1999: USD per DEM (CNB cross) x 1.95583; Fed rate from 1999
+    usd_dem = cnb_usd_dem()
+    synth = {m: v * DEM_PER_EUR for m, v in usd_dem.items()}
+    ov = [m for m in synth if m >= "1999-01" and m in fx_main]
+    dev = max(abs(synth[m] / fx_main[m] - 1) for m in ov) if ov else 1
+    lcheck("synthetic EUR/USD (CNB D-Mark x 1.95583) vs Fed, 1999-2001", dev < 0.025, f"max gap {dev:.2%} over {len(ov)} months")
+    usd_per_eur = {m: v for m, v in synth.items() if m < "1999-01"}
+    usd_per_eur.update(fx_main)
+    eur_per_usd = {m: 1 / v for m, v in usd_per_eur.items()}
+
+    pre, src, splice = {}, {}, {}
+    for aid, spec in LONG_ASSETS.items():
+        if spec["kind"] == "french":
+            usd = french_market(spec["file"])
+            eur = to_eur(usd, eur_per_usd)
+            common = [m for m in dates if m in eur]
+            x, y = [eur[m] for m in common], [ret[aid][m] for m in common]
+            c = corr(x, y) if len(common) > 24 else 0
+            te = stdev([a - b for a, b in zip(x, y)]) * math.sqrt(12) if len(common) > 24 else 1
+            gap = (sum(x) - sum(y)) / len(common) * 12 if common else 0
+            splice[aid] = {"corr": round(c, 4), "te": round(te, 4), "meanGap": round(gap, 4), "months": len(common)}
+            lcheck(f"{aid}: French vs MSCI overlap", c > 0.98 and te < 0.04,
+                   f"corr {c:.3f}, tracking error {te:.1%} p.a., mean gap {gap * 100:+.2f}pp p.a. over {len(common)} months")
+            pre[aid] = eur
+            src[aid] = f"{spec['label']}, Mkt-RF + RF, USD -> EUR (synthetic EUR before 1999), before {start_main}; MSCI from {start_main}"
+        elif spec["kind"] == "gold":
+            g = worldbank_gold_usd()
+            lv = {m: v / usd_per_eur[m] for m, v in g.items() if m in usd_per_eur}
+            pre[aid] = level_returns(lv)
+            src[aid] = f"World Bank monthly average USD price -> EUR before {start_main}; main gold series from {start_main}"
+        elif spec["kind"] == "bond":
+            y = complete_only({mkey(d): v for d, v in fred(spec["code"], since=LONG_FROM, tag="_long").items()})
+            local = bond_returns(y)
+            pre[aid] = local if spec["ccy"] == "EUR" else to_eur(local, eur_per_usd)
+            src[aid] = f"OECD 10Y yield via FRED {spec['code']}, synthetic constant-maturity" + (", USD -> EUR" if spec["ccy"] != "EUR" else ", DEM = EUR / 1.95583")
+        elif spec["kind"] == "cash":
+            de = complete_only({mkey(d): v for d, v in fred("IRSTCI01DEM156N", since=LONG_FROM, tag="_long").items()})
+            ez = complete_only({mkey(d): v for d, v in fred("IRSTCI01EZM156N", since=LONG_FROM, tag="_long").items()})
+            rate = {m: v for m, v in de.items() if m < "1994-01"}
+            rate.update({m: v for m, v in ez.items() if m >= "1994-01"})
+            pre[aid] = {m: v / 100 / 12 for m, v in rate.items()}
+            src[aid] = "German call money (FRED IRSTCI01DEM156N) before 1994, euro-area call money from 1994; main cash series from " + start_main
+
+    series = {}
+    for aid in LONG_ASSETS:
+        s = {m: v for m, v in pre[aid].items() if m < start_main}
+        s.update({m: ret[aid][m] for m in dates})
+        series[aid] = s
+    first = max(min(s) for s in series.values())
+    ldates = months_between(first, dates[-1])
+    for aid, s in series.items():
+        miss = [m for m in ldates if m not in s]
+        lim = MAX_ABS_MONTHLY[next(a["cls"] for a in ASSETS if a["id"] == aid)]
+        big = [(m, round(s[m], 4)) for m in ldates if m in s and abs(s[m]) > lim]
+        lcheck(f"{aid}: no gaps or implausible moves", not miss and not big, f"{first}..{dates[-1]}, missing {miss[:3]}, flagged {big[:3]}")
+    lcheck("long window start", first <= LONG_MIN_START, f"starts {first} (must start by {LONG_MIN_START}), {len(ldates)} months")
+    if not all(ok for _, ok in lc):
+        log("Long window dropped: at least one long-window check failed.")
+        return None
+    return {
+        "window": {"start": first, "end": dates[-1], "months": len(ldates)},
+        "assets": list(LONG_ASSETS), "sources": src, "splice": splice,
+        "fx": "Before 1999: synthetic EUR = USD per DEM (Czech National Bank cross-rate, month-end) x 1.95583; from 1999 as the main window",
+        "dates": ldates,
+        "returns": {aid: [round(series[aid][m], 8) for m in ldates] for aid in LONG_ASSETS},
+    }
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     os.makedirs(RAW, exist_ok=True)
@@ -499,6 +669,19 @@ def main():
                 "monthly": {"dates": dates, "returns": {k: [round(x, 8) for x in v] for k, v in series.items()}},
                 "checks": CHECKS,
             }
+            try:
+                long = build_long(ret, meta, dates)
+            except Exception as e:  # the long window is optional and must never block the main data
+                check("LONG window built", False, f"skipped: {e}", hard=False)
+                long = None
+            if long:
+                result["long"] = long
+                with open(os.path.join(OUT, "monthly_returns_eur_long.csv"), "w", newline="") as f:
+                    w = csv.writer(f)
+                    w.writerow(["month"] + long["assets"])
+                    for k, m in enumerate(long["dates"]):
+                        w.writerow([m] + [f"{long['returns'][i][k]:.8f}" for i in long["assets"]])
+            result["checks"] = CHECKS
             with open(os.path.join(OUT, "latest.json"), "w") as f:
                 json.dump(result, f, separators=(",", ":"))
             with open(os.path.join(OUT, "monthly_returns_eur.csv"), "w", newline="") as f:
@@ -545,6 +728,15 @@ def write_quality(r):
               f"{pct(b['vol_monthEndYield'])}",
               f"- corr with US equities: {b['corrWithEQ_US_monthlyAvgYield']:.2f} (avg) vs "
               f"{b['corrWithEQ_US_monthEndYield']:.2f} (month-end)"]
+    lg = r.get("long")
+    if lg:
+        L += ["", f"## Optional long window {lg['window']['start']} – {lg['window']['end']} ({lg['window']['months']} months)", "",
+              "| Asset | μ (arith.) | σ | Source before the main window |", "|---|---|---|---|"]
+        for aid in lg["assets"]:
+            x = lg["returns"][aid]
+            L.append(f"| {aid} | {pct(sum(x) / len(x) * 12)} | {pct(stdev(x) * math.sqrt(12))} | {lg['sources'][aid]} |")
+        L += ["", "Splice diagnostics (French vs MSCI, EUR, over the main window): " +
+              "; ".join(f"{k} corr {v['corr']:.3f}, TE {pct(v['te'])}, mean gap {v['meanGap'] * 100:+.2f}pp" for k, v in lg["splice"].items())]
     L += ["", "## Checks", ""]
     L += [f"- {'✅' if c['ok'] else ('❌' if c['hard'] else '⚠️')} **{c['check']}** — {c['detail']}" for c in r["checks"]]
     with open(os.path.join(ROOT, "QUALITY.md"), "w") as f:
