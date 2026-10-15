@@ -430,6 +430,7 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
       <span><i class="lg-line acc"></i>Your portfolio</span>
       <span><i class="lg-line ink"></i>Max-Sharpe (in-sample)</span>
       <span><i class="lg-line dash"></i>Min-vol (in-sample)</span>
+      <span class="hint" id="hist-overlap"></span>
     </div>
     <div class="hstats" id="hist-stats"></div>
   </section>
@@ -538,7 +539,7 @@ footer .btn { font-size: 12px; padding: 3px 8px; color: var(--ink-3); }
 // Embedded at build time from ladastary/mpt-data/data/latest.json by site/build_page.py. Do not edit by hand.
 const DATA = /*__DATA_START__*/null/*__DATA_END__*/;
 const PAGE_BUILT = "__PAGE_BUILT__";
-const PAGE_VERSION = "v0.5";
+const PAGE_VERSION = "v0.5.1";
 // ===== END DATA =====
 
 // ===== MATH =====
@@ -1919,7 +1920,7 @@ function renderRisk(m) {
 }
 
 // Historical check: growth of 10,000 EUR, monthly rebalanced to fixed weights.
-let hchart = null, ddchart = null;
+let hchart = null, ddchart = null, HLABELS = [];
 // History runs on the active grid (main or long window), over the months every selected asset has.
 function histSeries(sub) {
   const src = HIST.src, G = GRIDS[src];
@@ -1949,33 +1950,50 @@ function renderHistory(m) {
   $("hist-stats").innerHTML = st.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
   if (typeof Chart === "undefined") return;
   const col = chartColors();
+  // Numeric month axis (0 = start), so both charts share exact x positions and ticks sit on Januaries.
+  HLABELS = labels;
+  const xy = arr => arr.map((v, k) => ({ x: k, y: v }));
+  const sameAs = (a, b) => a && b && a.wealth.every((x, k) => Math.abs(x - b.wealth[k]) < 1e-9);
   const ds = [
-    { label: "Your portfolio", data: you.wealth.map(x => x * 10000), borderColor: col.accent, backgroundColor: col.accent, borderWidth: 2.5, pointRadius: 0, order: 0 },
-    ms && { label: "Max-Sharpe (in-sample)", data: ms.wealth.map(x => x * 10000), borderColor: col.ink, backgroundColor: col.ink, borderWidth: 1.5, pointRadius: 0, order: 1 },
-    mv && { label: "Min-vol (in-sample)", data: mv.wealth.map(x => x * 10000), borderColor: col.ink3, backgroundColor: col.ink3, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, order: 2 }
+    { label: "Your portfolio", data: xy(you.wealth.map(x => x * 10000)), borderColor: col.accent, backgroundColor: col.accent, borderWidth: 2.5, pointRadius: 0, order: 0 },
+    ms && { label: "Max-Sharpe (in-sample)", data: xy(ms.wealth.map(x => x * 10000)), borderColor: col.ink, backgroundColor: col.ink, borderWidth: 1.5, pointRadius: 0, order: 1 },
+    mv && { label: "Min-vol (in-sample)", data: xy(mv.wealth.map(x => x * 10000)), borderColor: col.ink3, backgroundColor: col.ink3, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, order: 2 }
   ].filter(Boolean);
-  const xTicks = { color: col.ink2, maxRotation: 0, autoSkip: true, maxTicksLimit: 7, callback: (v, i) => labels[i].slice(0, 4) };
-  const tip = { mode: "index", intersect: false, callbacks: { title: it => ym(labels[it[0].dataIndex]), label: c => `${c.dataset.label}: ${eur(c.parsed.y)}` } };
+  const years = labels.length / 12, stepY = years > 24 ? 5 : years > 10 ? 2 : 1;
+  const janTicks = labels.map((l, k) => (l.endsWith("-01") && +l.slice(0, 4) % stepY === 0 ? k : -1)).filter(k => k >= 0);
+  const xAxis = () => ({ type: "linear", min: 0, max: labels.length - 1, grid: {}, border: {}, title: { display: false },
+    afterBuildTicks: ax => { ax.ticks = janTicks.map(v => ({ value: v })); },
+    ticks: { color: col.ink2, maxRotation: 0, autoSkip: false, callback: v => (HLABELS[v] ? HLABELS[v].slice(0, 4) : "") } });
+  const fitY = ax => { ax.width = 84; };
+  const logTicks = ax => {
+    if (!STATE.histLog) return;
+    const out = []; for (let e = Math.floor(Math.log10(ax.min)); e <= Math.ceil(Math.log10(ax.max)); e++) for (const m of [1, 2, 5]) { const v = m * Math.pow(10, e); if (v >= ax.min && v <= ax.max) out.push({ value: v }); }
+    if (out.length >= 2) ax.ticks = out;
+  };
+  const title = it => (it.length && HLABELS[Math.round(it[0].parsed.x)] ? ym(HLABELS[Math.round(it[0].parsed.x)]) : "");
   if (!hchart) {
-    hchart = new Chart($("hchart"), { type: "line", data: { labels, datasets: ds }, options: {
-      animation: false, responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
-      plugins: { legend: { display: false }, tooltip: tip },
-      scales: { x: { ticks: xTicks }, y: { type: "logarithmic", title: { display: true, text: "Value (EUR)" }, ticks: { callback: v => (Number(v.toPrecision(1)) === v ? eur(v) : "") } } } } });
-    ddchart = new Chart($("ddchart"), { type: "line", data: { labels, datasets: [] }, options: {
-      animation: false, responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
-      plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false, callbacks: { title: it => ym(labels[it[0].dataIndex]), label: c => `Drawdown: ${pct(c.parsed.y)}` } } },
-      scales: { x: { ticks: xTicks }, y: { max: 0, title: { display: true, text: "Drawdown" }, ticks: { callback: v => (v * 100).toFixed(0) + "%", maxTicksLimit: 4 } } } } });
+    hchart = new Chart($("hchart"), { type: "line", data: { datasets: ds }, options: {
+      animation: false, responsive: true, maintainAspectRatio: false, parsing: false, normalized: true, interaction: { mode: "index", intersect: false, axis: "x" },
+      plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false, callbacks: { title, label: c => `${c.dataset.label}: ${eur(c.parsed.y)}` } } },
+      scales: { x: xAxis(), y: { type: "logarithmic", afterFit: fitY, afterBuildTicks: logTicks, title: { display: true, text: "Value (EUR)" }, ticks: { callback: v => eur(v) } } } } });
+    ddchart = new Chart($("ddchart"), { type: "line", data: { datasets: [] }, options: {
+      animation: false, responsive: true, maintainAspectRatio: false, parsing: false, normalized: true, interaction: { mode: "index", intersect: false, axis: "x" },
+      plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false, callbacks: { title, label: c => `Drawdown: ${pct(c.parsed.y)}` } } },
+      scales: { x: xAxis(), y: { max: 0, afterFit: fitY, title: { display: true, text: "Drawdown" }, ticks: { callback: v => (v * 100).toFixed(0) + "%", maxTicksLimit: 4 } } } } });
   }
-  hchart.data.labels = labels; hchart.data.datasets = ds;
+  hchart.data.datasets = ds;
+  hchart.options.scales.x = xAxis();
   hchart.options.scales.y.type = STATE.histLog ? "logarithmic" : "linear";
-  hchart.options.scales.x.ticks = xTicks;
   styleAxes(hchart.options.scales, col);
   hchart.update("none");
-  ddchart.data.labels = labels;
-  ddchart.data.datasets = [{ label: "Drawdown", data: you.dd, borderColor: col.accent, backgroundColor: css("--accent-soft"), fill: "origin", borderWidth: 1.5, pointRadius: 0 }];
-  ddchart.options.scales.x.ticks = xTicks;
+  ddchart.data.datasets = [{ label: "Drawdown", data: xy(you.dd), borderColor: col.accent, backgroundColor: hexA(col.accent, 0.18), fill: "origin", borderWidth: 1.5, pointRadius: 0 }];
+  ddchart.options.scales.x = xAxis();
   styleAxes(ddchart.options.scales, col);
   ddchart.update("none");
+  const note = [];
+  if (sameAs(you, ms)) note.push("max-Sharpe line hidden under yours (same weights)");
+  if (sameAs(you, mv)) note.push("min-vol line hidden under yours (same weights)");
+  $("hist-overlap").textContent = note.length ? "Note: " + note.join("; ") + "." : "";
   $("hs-log").setAttribute("aria-pressed", String(STATE.histLog)); $("hs-lin").setAttribute("aria-pressed", String(!STATE.histLog));
 }
 
@@ -2290,7 +2308,11 @@ let timer = null, upTimer = null;
 function schedule() { clearTimeout(timer); timer = setTimeout(render, 50); }
 function render() {
   const m = buildModel(), s = renderMetrics();
-  renderChart(m, s); renderPosition(m, s); renderRecs(m, s); renderRisk(m); renderHistory(m); renderRobust(); renderBL(); renderMC(m, s); renderReport(m, s);
+  // Each panel renders on its own: an error in one shows in that panel and never stops the others.
+  const safe = (fn, el) => { try { fn(); } catch (e) { console.error(e); const t = $(el); if (t) t.textContent = `This panel could not be drawn (${e && e.message ? e.message : e}). Please report this message.`; } };
+  safe(() => renderChart(m, s), "pos-text"); safe(() => renderPosition(m, s), "pos-text"); safe(() => renderRecs(m, s), "rec-caveat");
+  safe(() => renderRisk(m), "risk-text"); safe(() => renderHistory(m), "hist-text"); safe(() => renderRobust(), "rob-text");
+  safe(() => renderBL(), "bl-text"); safe(() => renderMC(m, s), "mc-text"); safe(() => renderReport(m, s), "rep-date");
   try { history.replaceState(null, "", "#" + encodeHash()); } catch (e) { /* not available in some frames */ }
 }
 function refreshAll() { syncBuilder(); syncStatsTable(); syncCorrTable(); schedule(); }
