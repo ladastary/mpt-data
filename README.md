@@ -10,6 +10,7 @@ Monthly data feed for the MPT portfolio simulator: all available months since Ja
 | `QUALITY.md` | Human-readable data-quality table, correlations, checks |
 | `data/latest.json` | Everything the simulator needs (stats, correlation matrix, monthly series, sources) |
 | `data/monthly_returns_eur.csv` | Monthly EUR returns, one column per asset (opens in Excel) |
+| `data/monthly_returns_eur_long.csv` | Optional long window from Feb 1991 (7 assets), if its checks passed |
 | `data/status.json` | Result of the latest run, pass or fail, with log |
 | `raw/` | Unmodified downloads from each source (audit trail) |
 
@@ -21,6 +22,7 @@ Monthly data feed for the MPT portfolio simulator: all available months since Ja
 | Gold | LBMA Gold Price PM in EUR, month-end (fallback: World Bank monthly average) |
 | US / German / Czech 10Y government bonds | OECD 10Y yields via FRED → synthetic constant-maturity total return |
 | EUR cash | Euro-area call money rate (OECD via FRED), extended with €STR (ECB via FRED) |
-| FX (USD, CZK → EUR) | Czech National Bank daily fixing, month-end |
+| FX (USD, CZK → EUR) | USD: Fed H.10 noon NY (FRED DEXUSEU); CZK: Czech National Bank fixing; month-end |
+| Long window before 2001 | Kenneth French market returns (US, Europe, EM); synthetic EUR from CNB D-Mark rates × 1.95583; German call money before 1994. Soft checks: a failure only drops the long window |
 
 To run it by hand: **Actions → Update data → Run workflow**.
